@@ -1,0 +1,266 @@
+# Copyright 2022 CanonicalLtd
+# See LICENSE file for licensing details.
+#
+# TEMPLATE-TODO: change this example to suit your needs.
+# If you don't need a config, you can remove the file entirely.
+# It ties in to the example _on_config_changed handler in src/charm.py
+#
+# Learn more about config at: https://juju.is/docs/sdk/config
+
+options:
+  server.log-level: 
+    default: info
+    description: The servers log level.
+    type: string
+  server.url-template: 
+    default: http://localhost:8080/{filename}
+    description: |
+      Template string to use when making URLs for giving back to the client.
+
+      e.g. https://livepatch-hosting.com/v1/patches/{filename}
+
+      This will need to be configured once the url or ip address of the service
+      is known.
+    type: string
+  server.server-address: 
+    default: localhost:8080
+    description: The address to bind the server to.
+    type: string
+  server.concurrency-limit: 
+    default: 1000
+    description: Maximum number of API requests being served concurrently.
+    type: int
+  server.burst-limit: 
+    default: 500
+    description: |
+      The maximum number of concurrently incoming requests.
+
+      After this limit, requests are queued according to the following:
+      concurrency-limit - burst_limit
+
+      For defaults, this is:
+      1000 - 500 = 500 (Maximum queue).
+      
+      Once the queue is reached, subsequent requests are rejected.
+    type: int
+  auth.sso.enabled: 
+    default: false
+    description: |
+      Note: Currently not available for on-prem users!
+
+      Whether or not OIDCSSO authentication should be enabled.
+    type: boolean
+  auth.sso.teams: 
+    default: ""
+    description: |
+      Note: Currently not available for on-prem users!
+
+      A list of comma separated launchpad teams that are allowed access
+      when connecting to the admin tool by OIDCSSO authentication.
+    type: string
+  database.name: 
+    default: livepatch
+    description: | 
+      Database name to connect to, the connection string is built
+      from the relation and is expected to be a relation.
+    type: string
+  database.connection-pool-max: 
+    default: 10
+    description: The maximum pool of connections to PostgreSQL.
+    type: int
+  database.connection-lifetime-max: 
+    default: 10m
+    description: The lifespan of an idle PostgreSQL connection.
+    type: string
+  patch-storage.type: 
+    default: filesystem
+    description: | 
+      The storage type to be used by the charm, defaults to filesystem.
+      The path can be located under:
+        /var/snap/canonical-livepatch-server/common/patches
+      
+      The available options are:
+        - filesystem
+        - swift
+        - postgres
+        - s3
+
+      When using postgres for storage, the charm will work automatically by means of relation.
+      The default database name is under:
+        livepatch
+      
+      The database name can be changed but must be created.
+    type: string
+  patch-storage.swift-username: 
+    default: ""
+    description: The Swift username to login against when using API key authorisation.
+    type: string
+  patch-storage.swift-api-key: 
+    default: ""
+    description: An authorisation API key for swift.
+    type: string
+  patch-storage.swift-auth-url: 
+    default: ""
+    description: The authorisation URL for swift.
+    type: string
+  patch-storage.swift-domain: 
+    default: ""
+    description: The domain the containers reside under in swift for storing patches.
+    type: string
+  patch-storage.swift-tenant: 
+    default: ""
+    description: The tenant account name for your container and API service user to connect under.
+    type: string
+  patch-storage.swift-container: 
+    default: ""
+    description: The swift blob storage location for storing patches.
+    type: string
+  patch-storage.swift-region: 
+    default: ""
+    description: The region assigned to this domain and tenant.
+    type: string
+  patch-storage.postgres-connection-string: 
+    default: ""
+    description: | 
+      A connection string URI to a PostgreSQL database for patch storage.
+
+      When set to an empty string, it is handled by relation and uses the same 
+      database cluster that livepatch server uses for state. The database name is 'livepatch'.
+
+      If this is to be changed, it is expected that the database you wish to connect to is 
+      created manually.
+    type: string
+  patch-storage.s3-bucket: 
+    default: ""
+    description: The S3 bucket to store patches within.
+    type: string
+  patch-storage.s3-endpoint: 
+    default: ""
+    description: The S3 API presigned endpoint.
+    type: string
+  patch-storage.s3-region: 
+    default: ""
+    description: The AWS region for this S3 storage.
+    type: string
+  patch-storage.s3-secure: 
+    default: false
+    description: Whether or not to perform TLS.
+    type: boolean
+  patch-storage.s3-access-key: 
+    default: ""
+    description: AWS programmatic API access key.
+    type: string
+  patch-storage.s3-secret-key: 
+    default: ""
+    description: AWS programmatic API secret key.
+    type: string
+  patch-cache.enabled: 
+    default: false
+    description: Whether or not to cache patches.
+    type: boolean
+  patch-cache.cache-ttl: 
+    default: 10m
+    description: How long to persist a patch in cache whilst it has not been actively retrieved.
+    type: string
+  patch-cache.cache-size: 
+    default: 128
+    description: The size of the cache in patches.
+    type: int
+  patch-sync.enabled: 
+    default: false
+    description: |
+      Whether or not if this instance of Livepatch Server should sync patches from another instance.
+
+      A sync is effectively a "shared" storage, having access to the same pool of patches as the upstream 
+      services patch storage.
+    type: boolean
+  patch-sync.flavors: 
+    default: "generic,lowlatency,aws"
+    description: A comma separated list of kernel flavors to download patches for..
+    type: string
+  patch-sync.interval: 
+    default: "1h"
+    description: Period between automatic patch snapshot downloads.
+    type: string
+  patch-sync.machine-count-strategy: 
+    default: "bucket"
+    description: The strategy to use when counting machines in a set.
+    type: string
+  patch-sync.send-machine-reports: 
+    default: false
+    description: Enable sending reports from local machines during patch synchronisation.
+    type: boolean
+  patch-sync.token: 
+    default: ""
+    description: Patch snapshot synchronisation token.
+    type: string
+  patch-sync.upstream-url: 
+    default: https://livepatch.canonical.com
+    description: Livepatch server to download patch snapshots from.
+    type: string
+  patch-sync.proxy.enabled: 
+    default: false
+    description: Whether or not to proxy patch syncs.
+    type: boolean
+  patch-sync.proxy.http: 
+    default: ""
+    description: A comma separated list HTTP proxies to query for patches.
+    type: string
+  patch-sync.proxy.https: 
+    default: ""
+    description: A comma separated list HTTPS proxies to query for patches.
+    type: string
+  patch-sync.proxy.no-proxy: 
+    default: ""
+    description: A comma separated list of domains, IP CIDRs and/or ports to block.
+    type: string
+  patch-blocklist.enabled: 
+    default: false
+    description: Whether or not to enable patch blocklist functionality for the admin tool.
+    type: boolean
+  patch-blocklist.refresh-interval: 
+    default: 5m
+    description: How often to check for new blocklist entries.
+    type: string
+  machine-reports.database.enabled: 
+    default: false
+    description: Whether or not to enabled machine reports writes to PostgreSQL.
+    type: boolean
+  machine-reports.database.retention-days: 
+    default: 10
+    description: A thing used by the charm.
+    type: int
+  machine-reports.database.cleanup-row-limit: 
+    default: 1000
+    description: Maximum number of rows to remove with a single report cleanup row.
+    type: int
+  machine-reports.database.cleanup-interval: 
+    default: 6h
+    description: Time between report cleanup runs.
+    type: string
+  machine-reports.event-bus.enabled: 
+    default: false
+    description: Whether or not to enable machine reports writes to kafka.
+    type: boolean
+  machine-reports.event-bus.brokers: 
+    default: ""
+    description: The list of kafka brokers, comma separated to use for pushing reports.
+    type: string
+  machine-reports.event-bus.client-cert: 
+    default: ""
+    description: The X509 client certificate to use for mTLS authorisation.
+    type: string
+  machine-reports.event-bus.client-key: 
+    default: ""
+    description: The X509 private key associated with the client certificate to use for mTLS authorisation.
+    type: string
+  machine-reports.event-bus.ca-cert: 
+    default: ""
+    description: The X509 intermediate or root certificate authority certificate to use for mTLS authorisation.
+    type: string
+  machine-reports.event-bus.kafka-version: 
+    default: ""
+    description: |
+      The kafka version you wish to specifically bind to, when not provided, 
+      the kafka version is not validated.
+    type: string

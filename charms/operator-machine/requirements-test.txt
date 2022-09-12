@@ -1,0 +1,7 @@
+pytest
+asynctest
+pytest-operator
+pytest-order
+pytest-sugar
+pytest-asyncio
+juju
