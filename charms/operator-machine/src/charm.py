@@ -15,7 +15,7 @@ import subprocess
 from typing import Tuple, Union
 from ops.main import main
 from ops.framework import StoredState
-from charms.operator_libs_linux.v1.snap import SnapCache, SnapError, Snap
+from charms.operator_libs_linux.v1.snap import SnapCache, SnapError, Snap, SnapState
 from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus, BlockedStatus
 from ops.charm import CharmBase, StartEvent, ConfigChangedEvent, UpdateStatusEvent, RelationJoinedEvent
 
@@ -35,7 +35,7 @@ class OperatorMachineCharm(CharmBase):
     @property
     def get_livepatch_snap(self) -> Snap:
         """Retrieves livepatch snap from the snap cache"""
-        return SnapCache().get(SERVER_SNAP_NAME)
+        return self.snap_cache.get(SERVER_SNAP_NAME)
 
     @property
     def livepatch_installed(self) -> bool:
@@ -49,7 +49,14 @@ class OperatorMachineCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self._state.set_default(db_conn_str=None, db_uri=None, dbn_ro_uris=[])
+        self._state.set_default(
+            db_conn_str=None, 
+            db_uri=None, 
+            dbn_ro_uris=[]
+        )
+
+        # Setup snapcache
+        self.snap_cache = SnapCache()
     
         # Hooks
         self.framework.observe(self.on.install, self._install)
@@ -75,10 +82,16 @@ class OperatorMachineCharm(CharmBase):
         """
         Install livepatch snap
         """
-        self.set_status_and_log(INSTALLING, WaitingStatus)
-        self._install_snap()
-        if self.livepatch_installed:
+        self.set_status_and_log(INSTALLING, WaitingStatus) 
+        # Make sure it installed
+        logger.info("Current install state: %s", self.livepatch_installed)
+        if not self.livepatch_installed:
+            logger.info('Installing livepatch')
+            # Ensure it is latest revision on edge.
+            self.get_livepatch_snap.ensure(SnapState.Latest, channel="edge")
             self.set_status_and_log(SUCCESSFUL_INSTALL, WaitingStatus)
+        else:
+            self.set_status_and_log("Livepatch snap already installed...", WaitingStatus)
 
     def _start(self, event: StartEvent):
         """

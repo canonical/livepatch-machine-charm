@@ -5,8 +5,8 @@
 # For a complete list of supported options, see:
 # https://juju.is/docs/sdk/metadata-reference: canonical-livepatch-server
 
-name: livepatch-machine
-display-name: Canonical Livepatch Server (Machine Charm)
+name: canonical-livepatch-server
+display-name: Canonical Livepatch Server
 summary: Canonical Livepatch Server
 description: |
   The purpose of the Livepatch Server is to pull in patch updates from
@@ -33,8 +33,3 @@ peers:
   livepatch:
     interface: livepatch
 
-resources:
-  livepatch-snap:
-    type: file
-    filename: canonical-livepatch-server.snap
-    description: The snapified server
