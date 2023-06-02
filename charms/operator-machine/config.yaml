@@ -170,6 +170,19 @@ options:
       A sync is effectively a "shared" storage, having access to the same pool of patches as the upstream 
       services patch storage.
     type: boolean
+  patch-sync.minimum-kernel-version:
+    description: >-
+      A minimum kernel version of format "0.0.0" denoting the lowest 
+      kernel version to download patches for. When no value is present,
+      all are synced. For example, "5.4.0" will sync "5.4.0" and up.
+    type: string
+    default: ""
+  patch-sync.architectures:
+    description: >-
+      Comma-separated list of architectures to download patches for.
+      When no value is present, all are synced.
+    type: string
+    default: ""
   patch-sync.flavors: 
     default: "generic,lowlatency,aws"
     description: A comma separated list of kernel flavors to download patches for..
