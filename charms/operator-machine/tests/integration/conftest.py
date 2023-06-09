@@ -1,9 +1,9 @@
 import logging
-import pytest
-from pytest_operator.plugin import OpsTest
 from pathlib import Path
-from typing import Tuple
-from integration.utils import build_snap_and_charm
+
+import pytest
+from integration.utils import fetch_charm
+from pytest_operator.plugin import OpsTest
 
 LOGGER = logging.getLogger(__name__)
 
@@ -14,32 +14,31 @@ LOGGER = logging.getLogger(__name__)
 # such that we don't have to try build it over and over.
 #
 # As for the charm, we should probably do the same. But for
-# now we use the built in ops_test.build_charm 
+# now we use the built in ops_test.build_charm
 
-# TODO: Figure out why snap sometimes builds, sometimes doesn't ...
-@pytest.fixture(name="snap_and_charm_paths", scope="module")
-async def build_snap_and_charm_fixture(ops_test: OpsTest):
-    LOGGER.info("Building snap and charm.")
-    charm_directory = Path.cwd() 
-    root_directory = charm_directory.parent.parent.absolute()
-    snap_path, charm_path = await build_snap_and_charm(root_directory, charm_directory, ops_test)
-    yield snap_path, charm_path
 
-@pytest.fixture(name="bundle_path", scope="module") # snap_and_charm_paths: Tuple[str, str])
-def render_bundle_fixture(ops_test: OpsTest, snap_and_charm_paths: Tuple[str, str]):
+@pytest.fixture(name="charm_path", scope="module")
+async def build_charm_fixture(ops_test: OpsTest):
+    LOGGER.info("Building charm.")
+    charm_path = await fetch_charm(ops_test)
+    yield charm_path
+
+
+@pytest.fixture(name="bundle_path", scope="module")  # charm_path: str)
+def render_bundle_fixture(ops_test: OpsTest, charm_path: str):
     LOGGER.info("Rendering bundle with snap and charm paths.")
-    charm_directory = Path.cwd() 
+    charm_directory = Path.cwd()
     tests_directory = charm_directory.joinpath("tests")
     tests_data_directory = tests_directory.joinpath("data")
     bundle_path = tests_data_directory.joinpath("int-test-bundle.yaml")
 
     rendered_bundle_path = ops_test.render_bundle(
-        bundle_path, 
-        charm_path=snap_and_charm_paths[1], 
-        snap_path=snap_and_charm_paths[0]
+        bundle_path,
+        charm_path=charm_path,
     )
     LOGGER.info("Bundle path is: %s", str(rendered_bundle_path.absolute()))
     yield rendered_bundle_path
+
 
 # TODO: Move this into setupTest funcs and turns the bundlepath & snap/charm build fixture
 # into session fixtures. Then pull bundle path into each setupTest lifecycle func and
@@ -51,6 +50,7 @@ async def deploy_bundle_function(ops_test: OpsTest, bundle_path: Path):
     if rc != 0:
         raise FailedToDeployBundleError(stderr, stdout)
 
+
 class FailedToDeployBundleError(Exception):
     """Exception raised when bundle fails to deploy.
 
@@ -58,6 +58,7 @@ class FailedToDeployBundleError(Exception):
         stderr -- todo
         stdout -- todo
     """
+
     def __init__(self, stderr, stdout):
         self.message = f"Bundle deploy failed: {(stderr or stdout).strip()}"
         super().__init__(self.message)

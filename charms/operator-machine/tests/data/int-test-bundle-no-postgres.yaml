@@ -18,8 +18,6 @@ applications:
     constraints: cpu-cores=1 mem=2G root-disk=50G
     options:
       patch-storage.type: postgres
-    resources:
-      livepatch-snap: {{ snap_path }}
   ubuntu-advantage:
     charm: ch:ubuntu-advantage-charmers-ubuntu-advantage
     options:

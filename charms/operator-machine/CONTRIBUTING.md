@@ -6,7 +6,7 @@ Create and activate a virtualenv with the development requirements:
 
     virtualenv .venv
     source venv/bin/activate
-    pip install -r requirements-dev.txt -r requirements-test.txt -r requirements.txt
+    pip install -r requirements-dev.txt -r requirements.txt
 
 Next, in VSCode press `ctrl + shift + p` and type `python interpreter`.
 

@@ -1,4 +1,4 @@
-LIVEPATCH_NOT_INSTALLED_ERROR = "Livepatch snap not installed, please re-install the charm or run the install hook again."
+LIVEPATCH_NOT_INSTALLED_ERROR = "Livepatch snap not installed, re-install the charm or run the install hook again."
 CHECKING_DB_VERS = "Checking database schema version..."
 INSTALLING = "Installing livepatch server..."
 SUCCESSFUL_INSTALL = "Snap installed! Waiting on postgres relation..."
