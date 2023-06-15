@@ -181,11 +181,14 @@ options:
     description: >-
       Comma-separated list of architectures to download patches for.
       When no value is present, all are synced.
+      If this field is empty, the patch sync will gather all architectures.
     type: string
     default: ""
   patch-sync.flavors: 
     default: "generic,lowlatency,aws"
-    description: A comma separated list of kernel flavors to download patches for..
+    description: >
+      A comma separated list of kernel flavors to download patches for.
+      If this field is empty, the patch sync will gather all flavors.
     type: string
   patch-sync.interval: 
     default: "1h"
