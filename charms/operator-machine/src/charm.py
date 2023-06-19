@@ -13,6 +13,7 @@ import subprocess
 from typing import Tuple, Union
 
 import pgsql
+from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.operator_libs_linux.v1.snap import Snap, SnapCache, SnapError, SnapState
 from ops.charm import CharmBase, ConfigChangedEvent, StartEvent, UpdateStatusEvent
 from ops.framework import StoredState
@@ -78,6 +79,25 @@ class OperatorMachineCharm(CharmBase):
         self.framework.observe(self.on.schema_upgrade_action, self.on_schema_upgrade_action)
         self.framework.observe(self.on.set_basic_users_action, self.on_set_basic_users_action)
         self.framework.observe(self.on.restart_action, self.on_restart_action)
+
+        # Grafana agent relation
+        server_address: str = self.config["server.server-address"]
+        server_split = server_address.split(":")
+        if len(server_split) != 2:
+            logger.warning("Server address config missing port.")
+            logger.warning("Won't enable COS observability.")
+        else:
+            self._grafana_agent = COSAgentProvider(
+                self,
+                relation_name="cos-agent",
+                metrics_endpoints=[
+                    {"path": "/metrics", "port": server_split[1]},
+                ],
+                metrics_rules_dir="./src/alert_rules/prometheus",
+                logs_rules_dir="./src/alert_rules/loki",
+                recurse_rules_dirs=True,
+                dashboard_dirs=["./src/grafana_dashboards"],
+            )
 
     ###################
     # LIFECYCLE HOOKS #

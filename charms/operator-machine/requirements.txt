@@ -1,3 +1,5 @@
-ops >= 1.4.0
+ops >= 2.0.0
 ops-lib-pgsql
 bcrypt
+pydantic >= 1.10.9
+cosl >= 0.0.5

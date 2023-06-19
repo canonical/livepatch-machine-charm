@@ -28,6 +28,9 @@ requires:
 provides:
   website:
     interface: http
+  cos-agent:
+    interface: cos_agent
+    limit: 1
 
 peers:
   livepatch:

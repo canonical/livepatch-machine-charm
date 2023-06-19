@@ -19,7 +19,7 @@ options:
       is known.
     type: string
   server.server-address: 
-    default: localhost:8080
+    default: 0.0.0.0:8080
     description: The address to bind the server to.
     type: string
   server.concurrency-limit: 
