@@ -39,6 +39,11 @@ options:
       
       Once the queue is reached, subsequent requests are rejected.
     type: int
+  server.is-cloud-delay-enabled:
+    default: False
+    description: |
+      Whether to enable the delayed roll-out of patches based on a client's cloud.
+    type: boolean
   auth.sso.enabled: 
     default: false
     description: |
