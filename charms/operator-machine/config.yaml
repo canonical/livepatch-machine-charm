@@ -44,6 +44,7 @@ options:
     description: |
       Whether to enable the delayed roll-out of patches based on a client's cloud.
     type: boolean
+  
   auth.sso.enabled: 
     default: false
     description: |
@@ -281,3 +282,55 @@ options:
       The kafka version you wish to specifically bind to, when not provided, 
       the kafka version is not validated.
     type: string
+  profiler.enabled: 
+    description: >
+      Whether to enable or disable continuous profiling on the server or not.
+    type: boolean
+    default: false
+  profiler.server_address:
+    description: The pyroscope server address to send the metrics to.
+    type: string
+  profiler.hostname: 
+    description: the hostname of the server the profiler is running on. This is used as a tag to group metrics by the server it is running on.
+    type: string
+  profiler.sample_rate:
+    description: sample rate for the profiler in Hz. 100 means reading 100 times per second.
+    type: int
+    default: 100
+  profiler.upload_rate:
+    description: The frequency of upload to the profiling server
+    type: int
+  profiler.mutex_profile_fraction:
+    description: >
+      this turns on mutex profiles with rate indicating the fraction of mutex contention events reported
+      in the mutex profile. On average, 1/rate events are reported. Setting an aggressive rate can hurt performance. ProfileMutexes must be True
+    type: int
+    default: 5
+  profiler.block_profile_rate:
+    description: >
+      this is the sampling average of one blocking event per `BlockProfileRate` nanoseconds spent blocked.
+      For example, set rate to 1000000000 (aka int(time.Second.Nanoseconds())) to record one sample per second a goroutine is blocked.
+      It is recommended to set this to values greater than 10,000. 
+      For more info, visit this: https://github.com/DataDog/go-profiler-notes/blob/main/block.md#benchmarks
+    type: int
+    default: 50000
+  profiler.profile_allocations:
+    description: this will profile the memory for allocated space as well as allocated objects
+    type: boolean
+    default: false
+  profiler.profile_inuse:
+    description: this will profile the overall used memory as well as the memory used by objects
+    type: boolean
+    default: false
+  profiler.profile_mutexes:
+    description:  this turns on profiling for mutexes
+    default: false
+    type: boolean
+  profiler.profile_blocks:
+    description: would profile blocking events (channels, select, etc) with the BlockProfileRate frequency.
+    type: boolean
+    default: false
+  profiler.profile_goroutines:
+    description: would profile separate concurrent running gorountines.
+    default: false
+    type: boolean
