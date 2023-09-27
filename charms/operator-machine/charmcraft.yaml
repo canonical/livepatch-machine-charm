@@ -22,3 +22,5 @@ parts:
   charm:
     charm-binary-python-packages:
       - bcrypt
+    charm-python-packages: [setuptools, pip]
+    build-packages: [git]
