@@ -20,9 +20,17 @@ issues: https://bugs.launchpad.net/livepatch-onprem
 requires:
   # Note: The same relation to postgres is used for both 
   # patch storage and the server
-  db:
+  database-legacy:
+    # This relation is DEPRECATED and is only kept for backward compatibility
+    # purposes.
+    #
+    # New deployments should use the `database` relation. Integration with both
+    # of these relations at the same time will result in an error.
     interface: pgsql
     limit: 1
+  database:
+    interface: postgresql_client
+    limit: 1 # Most charms only handle a single PostgreSQL Application.
 
 provides:
   website:

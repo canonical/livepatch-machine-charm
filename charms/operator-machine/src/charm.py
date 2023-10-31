@@ -13,6 +13,7 @@ import subprocess
 from typing import Tuple, Union
 
 import pgsql
+from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.operator_libs_linux.v1.snap import Snap, SnapCache, SnapError, SnapState
 from ops.charm import CharmBase, ConfigChangedEvent, StartEvent, UpdateStatusEvent
@@ -32,6 +33,11 @@ from constants.statuses import (
 from util.schema_tool import run_schema_version_check
 
 logger = logging.getLogger(__name__)
+
+DATABASE_NAME = "livepatch"
+
+DATABASE_RELATION = "database"
+DATABASE_RELATION_LEGACY = "database-legacy"
 
 
 class OperatorMachineCharm(CharmBase):
@@ -58,7 +64,7 @@ class OperatorMachineCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self._state.set_default(db_conn_str=None, db_uri=None, dbn_ro_uris=[])
+        self._state.set_default(db_uri=None, db_ro_uris=[])
 
         # Setup snapcache
         self.snap_cache = SnapCache()
@@ -69,11 +75,23 @@ class OperatorMachineCharm(CharmBase):
         self.framework.observe(self.on.config_changed, self._config_changed)
         self.framework.observe(self.on.update_status, self._update_status)
 
+        # Database (legacy)
+        self.db = pgsql.PostgreSQLClient(self, DATABASE_RELATION_LEGACY)
+        self.framework.observe(self.db.on.database_relation_joined, self._on_legacy_db_relation_joined)
+        self.framework.observe(self.db.on.master_changed, self._on_legacy_db_master_changed)
+        self.framework.observe(self.db.on.standby_changed, self._on_legacy_db_standby_changed)
+
         # Database
-        self.db = pgsql.PostgreSQLClient(self, "db")
-        self.framework.observe(self.db.on.database_relation_joined, self._on_database_relation_joined)
-        self.framework.observe(self.db.on.master_changed, self._on_master_changed)
-        self.framework.observe(self.db.on.standby_changed, self._on_standby_changed)
+        self.database = DatabaseRequires(
+            self,
+            relation_name=DATABASE_RELATION,
+            database_name=DATABASE_NAME,
+        )
+        self.framework.observe(self.database.on.database_created, self._on_database_event)
+        self.framework.observe(
+            self.database.on.endpoints_changed,
+            self._on_database_event,
+        )
 
         # Actions
         self.framework.observe(self.on.schema_upgrade_action, self.on_schema_upgrade_action)
@@ -187,49 +205,121 @@ class OperatorMachineCharm(CharmBase):
                 # We don't defer, as the server is not running for an unexpected reason
                 self.unit.status = MaintenanceStatus("Livepatch is not running.")
 
-    def _on_database_relation_joined(self, event: pgsql.DatabaseRelationJoinedEvent) -> None:
+    # Legacy database
+
+    def _on_legacy_db_relation_joined(self, event: pgsql.DatabaseRelationJoinedEvent) -> None:
         """
-        Handles determining if the database has finished setup, once setup is complete
+        Handles determining if the database (on legacy database relation) has finished setup, once setup is complete
         a master/standby may join / change in consequent events.
         """
-        logging.info("(postgresql) RELATION_JOINED event fired.")
+        logging.info("(postgresql, legacy database relation) RELATION_JOINED event fired.")
+
+        logging.warning(
+            f"`{DATABASE_RELATION_LEGACY}` is a legacy relation; try integrating with `{DATABASE_RELATION}` instead."
+        )
 
         if self.model.unit.is_leader():
             # Handle database configurations / changes here!
-            event.database = "livepatch"
-        elif event.database != "livepatch":
+            if self._is_database_relation_activated():
+                logging.error(f"The `{DATABASE_RELATION}` relation is already integrated.")
+                raise RuntimeError(
+                    "Integration with both database relations is not allowed; "
+                    f"`{DATABASE_RELATION}` is already activated."
+                )
+            event.database = DATABASE_NAME
+        elif event.database != DATABASE_NAME:
             event.defer()
 
-    def _on_master_changed(self, event: pgsql.MasterChangedEvent) -> None:
+    def _on_legacy_db_master_changed(self, event: pgsql.MasterChangedEvent) -> None:
         """
-        Handles master units of postgres joining / changing.
+        Handles master units of postgres joining / changing (for the legacy database relation).
         The internal snap configuration is updated to reflect this.
         """
-        logging.info("(postgresql) MASTER_CHANGED event fired.")
+        logging.info("(postgresql, legacy database relation) MASTER_CHANGED event fired.")
 
-        if event.database != "livepatch":
-            logging.debug("Database setup not complete yet, returning.")
+        if event.database != DATABASE_NAME:
+            logging.debug("(legacy database relation) Database setup not complete yet, returning.")
             return
 
-        self.set_status_and_log("Updating livepatchd database configuration...", WaitingStatus)
+        self.set_status_and_log(
+            "(legacy database relation) Updating livepatchd database configuration...", WaitingStatus
+        )
 
-        self._state.db_conn_str = None if event.master is None else event.master.conn_str
-        self._state.db_uri = None if event.master is None else event.master.uri
-        if self._check_install_and_relations():
-            self._check_schema_upgrade_required(event)
+        if event.master is not None:
+            # Note (babakks): The split is mainly to drop query parameters that may cause further database
+            # connection errors. For example, there's this query parameters, named `fallback_application_name`,
+            # which causes the schema upgrade command to return `unrecognized configuration parameter
+            # "fallback_application_name" (SQLSTATE 42704)`.
+            self._state.db_uri = event.master.uri.split("?", 1)[0]
+        else:
+            self._state.db_uri = None
 
-    def _on_standby_changed(self, event: pgsql.StandbyChangedEvent):
-        logging.info("(postgresql) STANDBY_CHANGED event fired.")
+        # if self._check_install_and_relations():
+        #     self._check_schema_upgrade_required(event)
+        self._config_changed(event)
+
+    def _on_legacy_db_standby_changed(self, event: pgsql.StandbyChangedEvent):
+        logging.info("(postgresql, legacy database relation) STANDBY_CHANGED event fired.")
         # NOTE NOTE NOTE
         # This should be used for none-master on-prem instances when configuring
         # additional livepatch instances, enabling us to read from standbys
-        if event.database != "livepatch":
+        if event.database != DATABASE_NAME:
             # Leader has not yet set requirements. Wait until next event,
             # or risk connecting to an incorrect database.
             return
 
         # If empty, no standbys available
-        self._state.db_ro_uris = [c.uri for c in event.standbys]
+
+        # Note (babakks): The split is mainly to drop query parameters that may cause further database
+        # connection errors. For example, there's this query parameters, named `fallback_application_name`,
+        # which causes the schema upgrade command to return `unrecognized configuration parameter
+        # "fallback_application_name" (SQLSTATE 42704)`.
+        self._state.db_ro_uris = [c.uri.split("?", 1)[0] for c in event.standbys]
+
+    # Database
+
+    def _is_legacy_database_relation_activated(self) -> bool:
+        return len(self.model.relations[DATABASE_RELATION_LEGACY]) > 0
+
+    def _is_database_relation_activated(self) -> bool:
+        return len(self.model.relations[DATABASE_RELATION]) > 0
+
+    def _on_database_event(self, event) -> None:
+        """Database event handler."""
+
+        if not self.model.unit.is_leader():
+            return
+
+        logging.info("(postgresql) RELATION_JOINED event fired.")
+
+        if self._is_legacy_database_relation_activated():
+            logging.error(f"The `{DATABASE_RELATION_LEGACY}` relation is already integrated.")
+            raise RuntimeError(
+                "Integration with both database relations is not allowed; "
+                f"`{DATABASE_RELATION_LEGACY}` is already activated."
+            )
+
+        if event.username is None or event.password is None:
+            event.defer()
+            logging.info(
+                "(postgresql) Relation data is not complete (missing `username` or `password` field); "
+                "deferring the event."
+            )
+            return
+
+        # get the first endpoint from a comma separate list
+        ep = event.endpoints.split(",", 1)[0]
+        # compose the db connection string
+        uri = f"postgresql://{event.username}:{event.password}@{ep}/{DATABASE_NAME}"
+
+        logging.info("received database uri: {}".format(uri))
+
+        # record the connection string
+        self._state.db_uri = uri
+
+        # if self._check_install_and_relations():
+        #     self._check_schema_upgrade_required(event)
+        self._config_changed(event)
 
     ###########
     # ACTIONS #
@@ -295,12 +385,17 @@ class OperatorMachineCharm(CharmBase):
             self.set_status_and_log(LIVEPATCH_NOT_INSTALLED_ERROR, MaintenanceStatus)
             return False
 
-        if self.model.get_relation(self.db.relation_name) is None:
+        db_joined = self._is_database_relation_activated()
+        legacy_db_joined = self._is_legacy_database_relation_activated()
+        if not db_joined and not legacy_db_joined:
             self.set_status_and_log(AWAIT_POSTGRES_RELATION, BlockedStatus)
             return False
 
         if self._state.db_uri is None:
-            self.set_status_and_log("Waiting for postgres to select master node...", WaitingStatus)
+            if db_joined:
+                self.set_status_and_log("Waiting for postgres...", WaitingStatus)
+            else:
+                self.set_status_and_log("Waiting for postgres to select master node...", WaitingStatus)
             return False
 
         return True
