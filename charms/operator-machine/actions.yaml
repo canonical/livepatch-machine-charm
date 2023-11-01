@@ -1,7 +1,17 @@
-# Copyright 2022 Canonical  
+# Copyright 2023 Canonical  
 # See LICENSE file for licensing details.
 #
 # Learn more about actions at: https://juju.is/docs/sdk/actions
+
+enable:
+  description: |
+    Enables livepatch on-prem.
+  params:
+    token:
+      type: string
+      description: |
+        A Ubuntu Pro token.
+  required: [token]
 
 schema-upgrade:
   description: Upgrade the application database schema.

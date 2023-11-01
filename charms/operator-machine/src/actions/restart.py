@@ -20,14 +20,14 @@ def on_restart_action(self: OperatorMachineCharm, event: ActionEvent) -> None:
         event.log(msg),
         event.fail(msg),
 
-    if self.livepatch_installed and self.livepatch_running:
+    if self.livepatch_installed:
         event.log("Restarting livepatch server...")
         self.get_livepatch_snap.restart(["livepatch"])
         event.log("Restart completed, checking service status...")
         if self.livepatch_running:
             event.log("Service restarted successfully.")
-            self._check_server_is_safe_to_start(event)
+            event.set_results({"restarted": "true"})
         else:
             fail_action("Server failed to restart.")
     else:
-        fail_action("Livepatch server failed to restart, as the server is not running and/or installed.")
+        fail_action("Livepatch server failed to restart, as the server snap is not installed.")

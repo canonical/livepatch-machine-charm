@@ -34,8 +34,11 @@ from util.schema_tool import run_schema_version_check
 
 logger = logging.getLogger(__name__)
 
-DATABASE_NAME = "livepatch"
+REQUIRED_SETTINGS = {
+    "server.url-template": "✘ server.url-template config not set",
+}
 
+DATABASE_NAME = "livepatch"
 DATABASE_RELATION = "database"
 DATABASE_RELATION_LEGACY = "database-legacy"
 
@@ -71,9 +74,11 @@ class OperatorMachineCharm(CharmBase):
 
         # Hooks
         self.framework.observe(self.on.install, self._install)
-        # self.framework.observe(self.on.start, self._start)
         self.framework.observe(self.on.config_changed, self._config_changed)
         self.framework.observe(self.on.update_status, self._update_status)
+
+        # Reverse-proxy
+        self.framework.observe(self.on.website_relation_joined, self._on_website_relation_joined)
 
         # Database (legacy)
         self.db = pgsql.PostgreSQLClient(self, DATABASE_RELATION_LEGACY)
@@ -94,6 +99,7 @@ class OperatorMachineCharm(CharmBase):
         )
 
         # Actions
+        self.framework.observe(self.on.enable_action, self.on_enable_action)
         self.framework.observe(self.on.schema_upgrade_action, self.on_schema_upgrade_action)
         self.framework.observe(self.on.set_basic_users_action, self.on_set_basic_users_action)
         self.framework.observe(self.on.restart_action, self.on_restart_action)
@@ -140,7 +146,7 @@ class OperatorMachineCharm(CharmBase):
         Starts livepatch server ensuring the related postgres
         has been migrated (via the snaps schema-tool)
         """
-        if self._check_install_and_relations() and self._check_schema_upgrade_required(event):
+        if self._check_install_and_relations() and self._database_migrated(event):
             self.set_status_and_log("Starting livepatch daemon...", WaitingStatus)
             self.get_livepatch_snap.start(["livepatch"])
             if self.livepatch_running:
@@ -151,45 +157,60 @@ class OperatorMachineCharm(CharmBase):
         Updates snap internal configuration, additionally
         validating the DB is ready each time.
         """
-        if self._check_install_and_relations() and self._check_schema_upgrade_required(event):
-            configuration = {**self.config}
-            # Leader specific configurations
-            if self.unit.is_leader():
-                configuration["server.is-leader"] = True
-                configuration["database.connection-string"] = self._state.db_uri
-            else:
-                configuration["server.is-leader"] = False
-                # TODO: Handle RO URIs
-                configuration["database.connection-string"] = self._state.db_uri
-            # General configuration override logic
-            if len(self.config.get("patch-storage.postgres-connection-string")) == 0:
-                configuration["patch-storage.postgres-connection-string"] = self._state.db_uri
-            if self.config.get("patch-sync.enabled") == "True":
-                # TODO: Test this alex
-                configuration["patch-sync.id"] = self.model.uuid
 
-            try:
-                prefixed_configuration = {f"lp.{key}": val for key, val in configuration.items()}
-                self.get_livepatch_snap.set(prefixed_configuration)
-            except SnapError as e:
-                # This *shouldn"t* fire, but would rather be safe!
-                logging.error(
-                    "error occured when attempting to set snap configuration value %s",
-                    e,
-                )
+        required_settings = REQUIRED_SETTINGS.copy()
 
-            self.set_status_and_log("Restarting livepatch daemon...", WaitingStatus)
-            self.get_livepatch_snap.restart(["livepatch"])
-
-            if self.unit.status.message == AWAIT_POSTGRES_RELATION:
-                event.defer()
+        for setting, error_msg in required_settings.items():
+            if self.config.get(setting) is None or self.config.get(setting) == "":
+                self.set_status_and_log(error_msg, BlockedStatus)
+                logger.warning(error_msg)
                 return
 
-            if self.livepatch_running is not True:
-                self.set_status_and_log("Livepatch failed to restart.", MaintenanceStatus)
-                event.defer()
-            else:
-                self._update_status(event)
+        if not self._check_install_and_relations():
+            return
+        if not self._database_migrated(event):
+            return
+
+        configuration = {**self.config}
+
+        # Leader specific configurations
+        if self.unit.is_leader():
+            configuration["server.is-leader"] = True
+        else:
+            configuration["server.is-leader"] = False
+
+        configuration["database.connection-string"] = self._state.db_uri
+
+        # General configuration override logic
+        if len(self.config.get("patch-storage.postgres-connection-string")) == 0:
+            configuration["patch-storage.postgres-connection-string"] = self._state.db_uri
+
+        if self.config.get("patch-sync.enabled") == "True":
+            # TODO: Test this alex
+            configuration["patch-sync.id"] = self.model.uuid
+
+        try:
+            prefixed_configuration = {f"lp.{key}": val for key, val in configuration.items()}
+            self.get_livepatch_snap.set(prefixed_configuration)
+        except SnapError as e:
+            # This *shouldn"t* fire, but would rather be safe!
+            logging.error(
+                "error occured when attempting to set snap configuration value %s",
+                e,
+            )
+
+        self.set_status_and_log("Restarting livepatch daemon...", WaitingStatus)
+        self.get_livepatch_snap.restart(["livepatch"])
+
+        if self.unit.status.message == AWAIT_POSTGRES_RELATION:
+            event.defer()
+            return
+
+        if self.livepatch_running is not True:
+            self.set_status_and_log("Livepatch failed to restart.", MaintenanceStatus)
+            event.defer()
+        else:
+            self._update_status(event)
 
     def _update_status(self, event: UpdateStatusEvent) -> None:
         """
@@ -321,9 +342,15 @@ class OperatorMachineCharm(CharmBase):
         #     self._check_schema_upgrade_required(event)
         self._config_changed(event)
 
+    def _on_website_relation_joined(self, event):
+        server_address: str = self.config.get("server.server-address")
+        port = server_address.split(":")[1]
+        event.relation.data[self.unit]["port"] = port
+
     ###########
     # ACTIONS #
     ###########
+    from actions.enable import on_enable_action
     from actions.restart import on_restart_action
     from actions.schema_upgrade import on_schema_upgrade_action
     from actions.set_basic_users import on_set_basic_users_action
@@ -358,7 +385,7 @@ class OperatorMachineCharm(CharmBase):
         except subprocess.CalledProcessError as e:
             raise SnapError("Could not install snap {}: {}".format(resource_path, e.output))
 
-    def _check_schema_upgrade_required(self, event: Union[StartEvent, ConfigChangedEvent, UpdateStatusEvent]) -> bool:
+    def _database_migrated(self, event: Union[StartEvent, ConfigChangedEvent, UpdateStatusEvent]) -> bool:
         """
         Starts (or restarts if the flag is given) the livepatch snap.
         """
@@ -370,7 +397,6 @@ class OperatorMachineCharm(CharmBase):
                 "Database not initialised, please run the schema-upgrade action.",
                 BlockedStatus,
             )
-            event.defer()
             return False
         else:
             logging.info("Database has been migrated. Current version: %s", version)
