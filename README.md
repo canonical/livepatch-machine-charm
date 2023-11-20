@@ -1,9 +1,22 @@
-# Livepatch On-Premises server
-# TODO: Update paths when the charmhub proj is created
+# Canonical livepatch machine charm
 
-The on-premises livepatch server enables the use of [Canonical Livepatch](https://ubuntu.com/security/livepatch)
-in network-restricted environments.
+The livepatch machine charm is the easiest and the recommended way to deploy livepatch. This charms installs and configures the Ubuntu Linux Livepatching Utility and Daemon. Canonical Livepatch patches high and critical linux kernel vulnerabilities removing the immediate need to reboot to upgrade the kernel, instead allowing the downtime to be scheduled. It is a part of the Ubuntu Pro offering.
 
-Livepatch on-prem is deployed using a [juju bundle](https://charmhub.io/canonical-livepatch-onprem).
+## Usage
 
-Documentation for this service is available on the [livepatch website](https:/ubuntu.com/security/livepatch/docs).
+```
+# deploy livepatch:
+juju deploy canonical-livepatch-server
+```
+
+## Relations
+
+TBA
+
+## Contributing
+
+Please see the [Juju SDK documentation](https://juju.is/docs/sdk) for more information about developing and improving charms and [Contributing](CONTRIBUTING.md) for developer guidance.
+
+## License
+
+The livepatch machine charm is free software, distributed under the Apache Software License, version 2.0. See [License](LICENSE) for more details.
