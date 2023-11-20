@@ -15,7 +15,7 @@ TBA
 
 ## Contributing
 
-Please see the [Juju SDK documentation](https://juju.is/docs/sdk) for more information about developing and improving charms and [Contributing](CONTRIBUTING.md) for developer guidance.
+Please see the [Juju SDK documentation](https://juju.is/docs/sdk) for more information about developing and improving charms and [Contributing](CONTRIBUTING.md) for developer guidance. Documentation for this service is available on the [livepatch website](https://github.com/ubuntu.com/security/livepatch/docs).
 
 ## License
 
