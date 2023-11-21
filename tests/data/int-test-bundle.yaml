@@ -1,3 +1,5 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
 name: canonical-livepatch-machine-onprem
 summary: Livepatch machine on-prem deployment bundle.
 description: |
@@ -16,7 +18,7 @@ applications:
     num_units: 1
     constraints: cpu-cores=1 mem=4G root-disk=50G
   livepatch-machine:
-    charm: {{ charm_path }}
+    charm: { { charm_path } }
     num_units: 1
     constraints: cpu-cores=1 mem=2G root-disk=50G
     options:
