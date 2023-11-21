@@ -1,16 +1,6 @@
-# Copyright 2021 Canonical Ltd.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 
 """Representations of the system's Snaps, and abstractions around managing them.
 
@@ -180,9 +170,7 @@ class SnapAPIError(Error):
 
     def __repr__(self):
         """String representation of the SnapAPIError class."""
-        return "APIError({!r}, {!r}, {!r}, {!r})".format(
-            self.body, self.code, self.status, self._message
-        )
+        return "APIError({!r}, {!r}, {!r}, {!r})".format(self.body, self.code, self.status, self._message)
 
 
 class SnapState(Enum):
@@ -273,18 +261,13 @@ class Snap(object):
         try:
             return subprocess.check_output(_cmd, universal_newlines=True)
         except CalledProcessError as e:
-            raise SnapError(
-                "Snap: {!r}; command {!r} failed with output = {!r}".format(
-                    self._name, _cmd, e.output
-                )
-            )
+            raise SnapError("Snap: {!r}; command {!r} failed with output = {!r}".format(self._name, _cmd, e.output))
 
     def _snap_daemons(
         self,
         command: List[str],
         services: Optional[List[str]] = None,
     ) -> CompletedProcess:
-
         if services:
             # an attempt to keep the command constrained to the snap instance's services
             services = ["{}.{}".format(self._name, service) for service in services]
@@ -355,9 +338,7 @@ class Snap(object):
         args = ["logs", "-n={}".format(num_lines)] if num_lines else ["logs"]
         return self._snap_daemons(args, services).stdout
 
-    def restart(
-        self, services: Optional[List[str]] = None, reload: Optional[bool] = False
-    ) -> None:
+    def restart(self, services: Optional[List[str]] = None, reload: Optional[bool] = False) -> None:
         """Restarts a snap's services.
 
         Args:
@@ -875,18 +856,12 @@ def _wrap_snap_operations(
             snaps["failed"].append(s)
 
     if len(snaps["failed"]):
-        raise SnapError(
-            "Failed to install or refresh snap(s): {}".format(
-                ", ".join([s for s in snaps["failed"]])
-            )
-        )
+        raise SnapError("Failed to install or refresh snap(s): {}".format(", ".join([s for s in snaps["failed"]])))
 
     return snaps["success"] if len(snaps["success"]) > 1 else snaps["success"][0]
 
 
-def install_local(
-    self, filename: str, classic: Optional[bool] = False, dangerous: Optional[bool] = False
-) -> Snap:
+def install_local(self, filename: str, classic: Optional[bool] = False, dangerous: Optional[bool] = False) -> Snap:
     """Perform a snap operation.
 
     Args:

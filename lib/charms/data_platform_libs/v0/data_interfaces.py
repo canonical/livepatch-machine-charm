@@ -1,16 +1,5 @@
 # Copyright 2023 Canonical Ltd.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE file for licensing details.
 
 r"""Library to manage the relation for the data-platform products.
 
@@ -346,9 +335,7 @@ def diff(event: RelationChangedEvent, bucket: Union[Unit, Application]) -> Diff:
     old_data = json.loads(event.relation.data[bucket].get("data", "{}"))
     # Retrieve the new data from the event relation databag.
     new_data = (
-        {key: value for key, value in event.relation.data[event.app].items() if key != "data"}
-        if event.app
-        else {}
+        {key: value for key, value in event.relation.data[event.app].items() if key != "data"} if event.app else {}
     )
 
     # These are the keys that were added to the databag and triggered this event.
@@ -492,12 +479,8 @@ class DataRequires(Object, ABC):
         self.local_app = self.charm.model.app
         self.local_unit = self.charm.unit
         self.relation_name = relation_name
-        self.framework.observe(
-            self.charm.on[relation_name].relation_created, self._on_relation_created_event
-        )
-        self.framework.observe(
-            self.charm.on[relation_name].relation_changed, self._on_relation_changed_event
-        )
+        self.framework.observe(self.charm.on[relation_name].relation_created, self._on_relation_created_event)
+        self.framework.observe(self.charm.on[relation_name].relation_changed, self._on_relation_changed_event)
 
     @abstractmethod
     def _on_relation_created_event(self, event: RelationCreatedEvent) -> None:
@@ -577,9 +560,7 @@ class DataRequires(Object, ABC):
         if not relation.app:
             return False
 
-        return (
-            "username" in relation.data[relation.app] and "password" in relation.data[relation.app]
-        )
+        return "username" in relation.data[relation.app] and "password" in relation.data[relation.app]
 
     def is_resource_created(self, relation_id: Optional[int] = None) -> bool:
         """Check if the resource has been created.
@@ -599,17 +580,13 @@ class DataRequires(Object, ABC):
         """
         if relation_id is not None:
             try:
-                relation = [relation for relation in self.relations if relation.id == relation_id][
-                    0
-                ]
+                relation = [relation for relation in self.relations if relation.id == relation_id][0]
                 return self._is_resource_created_for_relation(relation)
             except IndexError:
                 raise IndexError(f"relation id {relation_id} cannot be accessed")
         else:
             return (
-                all(
-                    self._is_resource_created_for_relation(relation) for relation in self.relations
-                )
+                all(self._is_resource_created_for_relation(relation) for relation in self.relations)
                 if self.relations
                 else False
             )
@@ -809,9 +786,7 @@ class DatabaseProvides(DataProvides):
         # Emit a database requested event if the setup key (database name and optional
         # extra user roles) was added to the relation databag by the application.
         if "database" in diff.added:
-            getattr(self.on, "database_requested").emit(
-                event.relation, app=event.app, unit=event.unit
-            )
+            getattr(self.on, "database_requested").emit(event.relation, app=event.app, unit=event.unit)
 
     def set_database(self, relation_id: int, database_name: str) -> None:
         """Set database name.
@@ -916,9 +891,7 @@ class DatabaseRequires(DataRequires):
 
             for relation_alias in relations_aliases:
                 self.on.define_event(f"{relation_alias}_database_created", DatabaseCreatedEvent)
-                self.on.define_event(
-                    f"{relation_alias}_endpoints_changed", DatabaseEndpointsChangedEvent
-                )
+                self.on.define_event(f"{relation_alias}_endpoints_changed", DatabaseEndpointsChangedEvent)
                 self.on.define_event(
                     f"{relation_alias}_read_only_endpoints_changed",
                     DatabaseReadOnlyEndpointsChangedEvent,
@@ -938,11 +911,7 @@ class DatabaseRequires(DataRequires):
 
         # Return if an alias was already assigned to this relation
         # (like when there are more than one unit joining the relation).
-        if (
-            self.charm.model.get_relation(self.relation_name, relation_id)
-            .data[self.local_unit]
-            .get("alias")
-        ):
+        if self.charm.model.get_relation(self.relation_name, relation_id).data[self.local_unit].get("alias"):
             return
 
         # Retrieve the available aliases (the ones that weren't assigned to any relation).
@@ -966,9 +935,7 @@ class DatabaseRequires(DataRequires):
         """
         alias = self._get_relation_alias(event.relation.id)
         if alias:
-            getattr(self.on, f"{alias}_{event_name}").emit(
-                event.relation, app=event.app, unit=event.unit
-            )
+            getattr(self.on, f"{alias}_{event_name}").emit(event.relation, app=event.app, unit=event.unit)
 
     def _get_relation_alias(self, relation_id: int) -> Optional[str]:
         """Returns the relation alias.
@@ -1012,20 +979,14 @@ class DatabaseRequires(DataRequires):
         host = host.split(":")[0]
         user = relation_data.get("username")
         password = relation_data.get("password")
-        connection_string = (
-            f"host='{host}' dbname='{self.database}' user='{user}' password='{password}'"
-        )
+        connection_string = f"host='{host}' dbname='{self.database}' user='{user}' password='{password}'"
         try:
             with psycopg.connect(connection_string) as connection:
                 with connection.cursor() as cursor:
-                    cursor.execute(
-                        "SELECT TRUE FROM pg_extension WHERE extname=%s::text;", (plugin,)
-                    )
+                    cursor.execute("SELECT TRUE FROM pg_extension WHERE extname=%s::text;", (plugin,))
                     return cursor.fetchone() is not None
         except psycopg.Error as e:
-            logger.exception(
-                f"failed to check whether {plugin} plugin is enabled in the database: %s", str(e)
-            )
+            logger.exception(f"failed to check whether {plugin} plugin is enabled in the database: %s", str(e))
             return False
 
     def _on_relation_created_event(self, event: RelationCreatedEvent) -> None:
@@ -1056,9 +1017,7 @@ class DatabaseRequires(DataRequires):
         if "username" in diff.added and "password" in diff.added:
             # Emit the default event (the one without an alias).
             logger.info("database created at %s", datetime.now())
-            getattr(self.on, "database_created").emit(
-                event.relation, app=event.app, unit=event.unit
-            )
+            getattr(self.on, "database_created").emit(event.relation, app=event.app, unit=event.unit)
 
             # Emit the aliased event (if any).
             self._emit_aliased_event(event, "database_created")
@@ -1072,9 +1031,7 @@ class DatabaseRequires(DataRequires):
         if "endpoints" in diff.added or "endpoints" in diff.changed:
             # Emit the default event (the one without an alias).
             logger.info("endpoints changed on %s", datetime.now())
-            getattr(self.on, "endpoints_changed").emit(
-                event.relation, app=event.app, unit=event.unit
-            )
+            getattr(self.on, "endpoints_changed").emit(event.relation, app=event.app, unit=event.unit)
 
             # Emit the aliased event (if any).
             self._emit_aliased_event(event, "endpoints_changed")
@@ -1088,9 +1045,7 @@ class DatabaseRequires(DataRequires):
         if "read-only-endpoints" in diff.added or "read-only-endpoints" in diff.changed:
             # Emit the default event (the one without an alias).
             logger.info("read-only-endpoints changed on %s", datetime.now())
-            getattr(self.on, "read_only_endpoints_changed").emit(
-                event.relation, app=event.app, unit=event.unit
-            )
+            getattr(self.on, "read_only_endpoints_changed").emit(event.relation, app=event.app, unit=event.unit)
 
             # Emit the aliased event (if any).
             self._emit_aliased_event(event, "read_only_endpoints_changed")
@@ -1209,9 +1164,7 @@ class KafkaProvides(DataProvides):
         # Emit a topic requested event if the setup key (topic name and optional
         # extra user roles) was added to the relation databag by the application.
         if "topic" in diff.added:
-            getattr(self.on, "topic_requested").emit(
-                event.relation, app=event.app, unit=event.unit
-            )
+            getattr(self.on, "topic_requested").emit(event.relation, app=event.app, unit=event.unit)
 
     def set_topic(self, relation_id: int, topic: str) -> None:
         """Set topic name in the application relation databag.
@@ -1286,8 +1239,7 @@ class KafkaRequires(DataRequires):
         """Event emitted when the Kafka relation is created."""
         # Sets topic, extra user roles, and "consumer-group-prefix" in the relation
         relation_data = {
-            f: getattr(self, f.replace("-", "_"), "")
-            for f in ["consumer-group-prefix", "extra-user-roles", "topic"]
+            f: getattr(self, f.replace("-", "_"), "") for f in ["consumer-group-prefix", "extra-user-roles", "topic"]
         }
 
         self._update_relation_data(event.relation.id, relation_data)
@@ -1389,9 +1341,7 @@ class OpenSearchProvides(DataProvides):
         # Emit an index requested event if the setup key (index name and optional extra user roles)
         # have been added to the relation databag by the application.
         if "index" in diff.added:
-            getattr(self.on, "index_requested").emit(
-                event.relation, app=event.app, unit=event.unit
-            )
+            getattr(self.on, "index_requested").emit(event.relation, app=event.app, unit=event.unit)
 
     def set_index(self, relation_id: int, index: str) -> None:
         """Set the index in the application relation databag.
@@ -1428,9 +1378,7 @@ class OpenSearchRequires(DataRequires):
 
     on = OpenSearchRequiresEvents()  # pyright: ignore[reportGeneralTypeIssues]
 
-    def __init__(
-        self, charm, relation_name: str, index: str, extra_user_roles: Optional[str] = None
-    ):
+    def __init__(self, charm, relation_name: str, index: str, extra_user_roles: Optional[str] = None):
         """Manager of OpenSearch client relations."""
         super().__init__(charm, relation_name, extra_user_roles)
         self.charm = charm
@@ -1458,9 +1406,7 @@ class OpenSearchRequires(DataRequires):
         updates = {"username", "password", "tls", "tls-ca"}
         if len(set(diff._asdict().keys()) - updates) < len(diff):
             logger.info("authentication updated at: %s", datetime.now())
-            getattr(self.on, "authentication_updated").emit(
-                event.relation, app=event.app, unit=event.unit
-            )
+            getattr(self.on, "authentication_updated").emit(event.relation, app=event.app, unit=event.unit)
 
         # Check if the index is created
         # (the OpenSearch charm shares the credentials).
