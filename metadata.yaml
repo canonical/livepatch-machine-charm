@@ -16,6 +16,7 @@ maintainers:
 website: https://ubuntu.com/security/livepatch
 docs: https://discourse.ubuntu.com/t/ubuntu-livepatch-service/22723
 issues: https://bugs.launchpad.net/livepatch-onprem
+source: https://github.com/canonical/livepatch-machine-charm
 
 requires:
   # Note: The same relation to postgres is used for both
