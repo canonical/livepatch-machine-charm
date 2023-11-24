@@ -1,0 +1,6 @@
+applications:
+  livepatch:
+    # This overlay simply uses the locally built version of the charm.
+    # Intended for development purposes.
+    charm: ../canonical-livepatch-server_ubuntu-20.04-amd64_ubuntu-22.04-amd64.charm
+    channel:
