@@ -1,24 +1,27 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+"""Restart action."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from charm import OperatorMachineCharm
-
 from ops.charm import ActionEvent
 from ops.model import MaintenanceStatus
 
+if TYPE_CHECKING:
+    from charm import OperatorMachineCharm
+
 
 def on_restart_action(self: OperatorMachineCharm, event: ActionEvent) -> None:
-    """
-    Restarts the livepatch server daemon service within the snap.
-    """
+    """Restart the livepatch server daemon service within the snap."""
     event.log("Attempting to restart livepatch server...")
 
     def fail_action(msg):
-        self.set_status_and_log(msg, MaintenanceStatus),
-        event.log(msg),
-        event.fail(msg),
+        self.set_status_and_log(msg, MaintenanceStatus)
+        event.log(msg)
+        event.fail(msg)
 
     if self.livepatch_installed:
         event.log("Restarting livepatch server...")

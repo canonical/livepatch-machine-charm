@@ -1,8 +1,8 @@
-# Copyright 2023 Canonical
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 #
 # Learn more about testing at: https://juju.is/docs/sdk/testing
-
+"""Unit tests module."""
 import unittest
 from unittest.mock import patch
 
@@ -14,6 +14,8 @@ APP_NAME = "canonical-livepatch-server"
 
 
 class TestCharm(unittest.TestCase):
+    """Unit tests class."""
+
     def setUp(self):
         self.harness = Harness(OperatorMachineCharm)
         self.addCleanup(self.harness.cleanup)
@@ -21,6 +23,7 @@ class TestCharm(unittest.TestCase):
         self.harness.begin()
 
     def test_database_relations_are_mutually_exclusive__legacy_first(self):
+        """test db relations are mutually exclusive for legacy relations."""
         rel_id = self.harness.add_relation("livepatch", "livepatch")
         self.harness.add_relation_unit(rel_id, f"{APP_NAME}/1")
         self.harness.set_leader(True)
@@ -48,12 +51,13 @@ class TestCharm(unittest.TestCase):
                     "endpoints": "some.database.host,some.other.database.host",
                 },
             )
-        self.assertEqual(
-            str(cm.exception),
-            "Integration with both database relations is not allowed; `database-legacy` is already activated.",
-        )
+            self.assertEqual(
+                str(cm.exception),
+                "Integration with both database relations is not allowed; `database-legacy` is already activated.",
+            )
 
     def test_database_relations_are_mutually_exclusive__standard_first(self):
+        """Test db relations are mutually exclusive."""
         rel_id = self.harness.add_relation("livepatch", "livepatch")
         self.harness.add_relation_unit(rel_id, f"{APP_NAME}/1")
         self.harness.set_leader(True)

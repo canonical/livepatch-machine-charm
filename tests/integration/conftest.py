@@ -1,3 +1,7 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+"""Integration tests configuration helpers and fixtures."""
 import logging
 from pathlib import Path
 
@@ -19,6 +23,7 @@ LOGGER = logging.getLogger(__name__)
 
 @pytest.fixture(name="charm_path", scope="module")
 async def build_charm_fixture(ops_test: OpsTest):
+    """A fixture to Build the charm."""
     LOGGER.info("Building charm.")
     charm_path = await fetch_charm(ops_test)
     yield charm_path
@@ -26,6 +31,7 @@ async def build_charm_fixture(ops_test: OpsTest):
 
 @pytest.fixture(name="bundle_path", scope="module")  # charm_path: str)
 def render_bundle_fixture(ops_test: OpsTest, charm_path: str):
+    """Render bundle fixture."""
     LOGGER.info("Rendering bundle with snap and charm paths.")
     charm_directory = Path.cwd()
     tests_directory = charm_directory.joinpath("tests")
@@ -45,7 +51,13 @@ def render_bundle_fixture(ops_test: OpsTest, charm_path: str):
 # deploy per each test suite.
 @pytest.fixture(name="deploy_built_bundle", scope="module")
 async def deploy_bundle_function(ops_test: OpsTest, bundle_path: Path):
-    juju_cmd = ["deploy", "-m", ops_test.model_full_name, str(bundle_path.absolute())]
+    """Deploy bundle function."""
+    juju_cmd = [
+        "deploy",
+        "-m",
+        ops_test.model_full_name,
+        str(bundle_path.absolute()),
+    ]
     rc, stdout, stderr = await ops_test.juju(*juju_cmd)
     if rc != 0:
         raise FailedToDeployBundleError(stderr, stdout)

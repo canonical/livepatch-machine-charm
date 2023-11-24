@@ -1,7 +1,10 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+"""Schema upgrades integration tests."""
 import logging
 
-import integration.utils as utils
 import pytest
+from integration import utils
 from juju.action import Action
 from pytest_operator.plugin import OpsTest
 
@@ -11,7 +14,10 @@ LOGGER = logging.getLogger(__name__)
 @pytest.mark.abort_on_fail
 @pytest.mark.usefixtures("deploy_built_bundle")
 class TestSchemaUpgrade:
+    """Schema upgrade tests."""
+
     async def test_it_blocks_when_no_schema_upgrade_ran_on_legacy_database_relation(self, ops_test: OpsTest):
+        """Check that the charm blocks when no schema upgrade has run on legacy db relation."""
         # Checking postgres is active, livepatch blocked, and relation complete
         # means we should be at schema upgrade stage.
         async with ops_test.fast_forward():
@@ -40,6 +46,7 @@ class TestSchemaUpgrade:
         assert expected == got
 
     async def test_schema_upgrade_runs_successfully_on_legacy_database_relation(self, ops_test: OpsTest):
+        """Run schema upgrade on legacy db relation and assert success."""
         # Checking postgres is active, livepatch blocked, and relation complete
         # means we should be at schema upgrade stage.
         async with ops_test.fast_forward():
@@ -48,8 +55,8 @@ class TestSchemaUpgrade:
 
         await ops_test.model.add_relation("livepatch-machine:database-legacy", "postgresql:db")
 
-        ops_test.model.get_action_output
-        ops_test.model.wait_for_action
+        await ops_test.model.get_action_output()
+        await ops_test.model.wait_for_action()
 
         livepatch_unit = await utils.get_unit_by_name("livepatch-machine", "0", ops_test.model.units)
         action: Action = await livepatch_unit.run_action("schema-upgrade")
@@ -59,6 +66,7 @@ class TestSchemaUpgrade:
         assert ops_test.model.applications["postgresql"].status == "active"
 
     async def test_it_blocks_when_no_schema_upgrade_ran(self, ops_test: OpsTest):
+        """Check that the charm blocks when the schema upgrade didn't run yet."""
         # Checking postgres is active, livepatch blocked, and relation complete
         # means we should be at schema upgrade stage.
         async with ops_test.fast_forward():
@@ -87,6 +95,7 @@ class TestSchemaUpgrade:
         assert expected == got
 
     async def test_schema_upgrade_runs_successfully(self, ops_test: OpsTest):
+        """Run schema upgrade and check that it was successful."""
         # Checking postgres is active, livepatch blocked, and relation complete
         # means we should be at schema upgrade stage.
         async with ops_test.fast_forward():
@@ -95,8 +104,8 @@ class TestSchemaUpgrade:
 
         await ops_test.model.add_relation("livepatch-machine:database", "postgresql:database")
 
-        ops_test.model.get_action_output
-        ops_test.model.wait_for_action
+        await ops_test.model.get_action_output()
+        await ops_test.model.wait_for_action()
 
         livepatch_unit = await utils.get_unit_by_name("livepatch-machine", "0", ops_test.model.units)
         action: Action = await livepatch_unit.run_action("schema-upgrade")

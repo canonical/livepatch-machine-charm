@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
-# Copyright 2023 Canonical Ltd
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 #
 # Learn more at: https://juju.is/docs/sdk
 
-"""
-Livepatch machine operator charm
-"""
+"""Livepatch machine operator charm."""
 
 import logging
-import subprocess
+import subprocess  # nosec
 from typing import Tuple, Union
 
 import pgsql
@@ -44,15 +42,13 @@ DATABASE_RELATION_LEGACY = "database-legacy"
 
 
 class OperatorMachineCharm(CharmBase):
-    """
-    Livepatch on-premise machine charm
-    """
+    """Livepatch on-premise machine charm."""
 
     _state: StoredState = StoredState()
 
     @property
     def get_livepatch_snap(self) -> Snap:
-        """Retrieves livepatch snap from the snap cache"""
+        """Retrieves livepatch snap from the snap cache."""
         return self.snap_cache.get(SERVER_SNAP_NAME)
 
     @property
@@ -65,7 +61,8 @@ class OperatorMachineCharm(CharmBase):
         """Reports if the "livepatch" snap daemon is running."""
         return self.get_livepatch_snap.services["livepatch"]["active"]
 
-    def __init__(self, *args):
+    def __init__(self, *args) -> None:
+        """Init function."""
         super().__init__(*args)
         self._state.set_default(db_uri=None, db_ro_uris=[])
 
@@ -82,7 +79,10 @@ class OperatorMachineCharm(CharmBase):
 
         # Database (legacy)
         self.db = pgsql.PostgreSQLClient(self, DATABASE_RELATION_LEGACY)
-        self.framework.observe(self.db.on.database_relation_joined, self._on_legacy_db_relation_joined)
+        self.framework.observe(
+            self.db.on.database_relation_joined,
+            self._on_legacy_db_relation_joined,
+        )
         self.framework.observe(self.db.on.master_changed, self._on_legacy_db_master_changed)
         self.framework.observe(self.db.on.standby_changed, self._on_legacy_db_standby_changed)
 
@@ -127,9 +127,7 @@ class OperatorMachineCharm(CharmBase):
     # LIFECYCLE HOOKS #
     ###################
     def _install(self, _):
-        """
-        Install livepatch snap
-        """
+        """Install livepatch snap."""
         self.set_status_and_log(INSTALLING, WaitingStatus)
         # Make sure it installed
         logger.info("Current install state: %s", self.livepatch_installed)
@@ -142,10 +140,7 @@ class OperatorMachineCharm(CharmBase):
             self.set_status_and_log("Livepatch snap already installed...", WaitingStatus)
 
     def _start(self, event: StartEvent):
-        """
-        Starts livepatch server ensuring the related postgres
-        has been migrated (via the snaps schema-tool)
-        """
+        """Start livepatch server ensuring the related postgres has been migrated (via the snaps schema-tool)."""
         if self._check_install_and_relations() and self._database_migrated(event):
             self.set_status_and_log("Starting livepatch daemon...", WaitingStatus)
             self.get_livepatch_snap.start(["livepatch"])
@@ -153,15 +148,11 @@ class OperatorMachineCharm(CharmBase):
                 self.set_status_and_log("Livepatch running!", ActiveStatus)
 
     def _config_changed(self, event: ConfigChangedEvent):
-        """
-        Updates snap internal configuration, additionally
-        validating the DB is ready each time.
-        """
-
+        """Update snap internal configuration, additionally validating the DB is ready each time."""
         required_settings = REQUIRED_SETTINGS.copy()
 
         for setting, error_msg in required_settings.items():
-            if self.config.get(setting) is None or self.config.get(setting) == "":
+            if self.config.get(setting) in (None, ""):
                 self.set_status_and_log(error_msg, BlockedStatus)
                 logger.warning(error_msg)
                 return
@@ -182,7 +173,8 @@ class OperatorMachineCharm(CharmBase):
         configuration["database.connection-string"] = self._state.db_uri
 
         # General configuration override logic
-        if len(self.config.get("patch-storage.postgres-connection-string")) == 0:
+        pg_conn_str_conf = "patch-storage.postgres-connection-string"
+        if len(self.config.get(pg_conn_str_conf)) == 0:
             configuration["patch-storage.postgres-connection-string"] = self._state.db_uri
 
         if self.config.get("patch-sync.enabled") == "True":
@@ -195,7 +187,7 @@ class OperatorMachineCharm(CharmBase):
         except SnapError as e:
             # This *shouldn"t* fire, but would rather be safe!
             logging.error(
-                "error occured when attempting to set snap configuration value %s",
+                "error occurred when attempting to set snap configuration value %s",
                 e,
             )
 
@@ -214,9 +206,9 @@ class OperatorMachineCharm(CharmBase):
 
     def _update_status(self, event: UpdateStatusEvent) -> None:
         """
-        Performs a simple service health check
-        TODO: Hit debug status and check active checks to give better
-        update statuses
+        Perform a simple service health check.
+
+        TODO: Hit debug status and check active checks to give better update statuses.
         """
         logging.info("Updating application status...")
         if self._check_install_and_relations():
@@ -230,8 +222,9 @@ class OperatorMachineCharm(CharmBase):
 
     def _on_legacy_db_relation_joined(self, event: pgsql.DatabaseRelationJoinedEvent) -> None:
         """
-        Handles determining if the database (on legacy database relation) has finished setup, once setup is complete
-        a master/standby may join / change in consequent events.
+        Handle determining if the database (on legacy database relation) has finished setup.
+
+        Once setup is complete a primary/standby may join/change in consequent events.
         """
         logging.info("(postgresql, legacy database relation) RELATION_JOINED event fired.")
 
@@ -253,7 +246,8 @@ class OperatorMachineCharm(CharmBase):
 
     def _on_legacy_db_master_changed(self, event: pgsql.MasterChangedEvent) -> None:
         """
-        Handles master units of postgres joining / changing (for the legacy database relation).
+        Handle primary units of postgres joining/changing (for the legacy database relation).
+
         The internal snap configuration is updated to reflect this.
         """
         logging.info("(postgresql, legacy database relation) MASTER_CHANGED event fired.")
@@ -263,14 +257,16 @@ class OperatorMachineCharm(CharmBase):
             return
 
         self.set_status_and_log(
-            "(legacy database relation) Updating livepatchd database configuration...", WaitingStatus
+            "(legacy database relation) Updating livepatchd database configuration...",
+            WaitingStatus,
         )
-
+        # wokeignore:rule=master
         if event.master is not None:
             # Note (babakks): The split is mainly to drop query parameters that may cause further database
             # connection errors. For example, there's this query parameters, named `fallback_application_name`,
             # which causes the schema upgrade command to return `unrecognized configuration parameter
             # "fallback_application_name" (SQLSTATE 42704)`.
+            # wokeignore:rule=master
             self._state.db_uri = event.master.uri.split("?", 1)[0]
         else:
             self._state.db_uri = None
@@ -281,7 +277,8 @@ class OperatorMachineCharm(CharmBase):
 
     def _on_legacy_db_standby_changed(self, event: pgsql.StandbyChangedEvent):
         logging.info("(postgresql, legacy database relation) STANDBY_CHANGED event fired.")
-        # NOTE NOTE NOTE
+        # NOTE
+        # wokeignore:rule=master
         # This should be used for none-master on-prem instances when configuring
         # additional livepatch instances, enabling us to read from standbys
         if event.database != DATABASE_NAME:
@@ -307,7 +304,6 @@ class OperatorMachineCharm(CharmBase):
 
     def _on_database_event(self, event) -> None:
         """Database event handler."""
-
         if not self.model.unit.is_leader():
             return
 
@@ -333,7 +329,7 @@ class OperatorMachineCharm(CharmBase):
         # compose the db connection string
         uri = f"postgresql://{event.username}:{event.password}@{ep}/{DATABASE_NAME}"
 
-        logging.info("received database uri: {}".format(uri))
+        logging.info(f"received database uri: {uri}")
 
         # record the connection string
         self._state.db_uri = uri
@@ -342,7 +338,7 @@ class OperatorMachineCharm(CharmBase):
         #     self._check_schema_upgrade_required(event)
         self._config_changed(event)
 
-    def _on_website_relation_joined(self, event):
+    def _on_website_relation_joined(self, event) -> None:
         server_address: str = self.config.get("server.server-address")
         port = server_address.split(":")[1]
         event.relation.data[self.unit]["port"] = port
@@ -360,10 +356,10 @@ class OperatorMachineCharm(CharmBase):
     ###########
     def _install_snap(self) -> None:
         """
-        Installs the Livepatch Server snap.
+        Install the Livepatch Server snap.
 
         Note:
-        This is pulled from the lib as out of the box inthe lib, it just
+        This is pulled from the lib as out of the box in the lib, it just
         doesn't work...
         """
         resource_path = self.model.resources.fetch("livepatch-snap")
@@ -376,19 +372,17 @@ class OperatorMachineCharm(CharmBase):
         ]
         try:
             logging.info("Attempting to install livepatch snap...")
-            subprocess.check_output(_cmd, universal_newlines=True).splitlines()[0]
+            _ = subprocess.check_output(_cmd, universal_newlines=True).splitlines()[0]  # nosec
 
             if self.get_livepatch_snap.present:
                 logging.info("Snap: %s installed!", self.get_livepatch_snap.name)
             else:
                 raise SnapError("Could not find livepatch snap, TODO make error better")
         except subprocess.CalledProcessError as e:
-            raise SnapError("Could not install snap {}: {}".format(resource_path, e.output))
+            raise SnapError(f"Could not install snap {resource_path}: {e.output}") from e
 
     def _database_migrated(self, event: Union[StartEvent, ConfigChangedEvent, UpdateStatusEvent]) -> bool:
-        """
-        Starts (or restarts if the flag is given) the livepatch snap.
-        """
+        """Start (or restart if the flag is given) the livepatch snap."""
         self.set_status_and_log(CHECKING_DB_VERS, WaitingStatus)
         upgrade_required, version = self._check_schema_upgrade_ran()
 
@@ -398,14 +392,12 @@ class OperatorMachineCharm(CharmBase):
                 BlockedStatus,
             )
             return False
-        else:
-            logging.info("Database has been migrated. Current version: %s", version)
-            return True
+
+        logging.info("Database has been migrated. Current version: %s", version)
+        return True
 
     def _check_install_and_relations(self) -> bool:
-        """
-        If returns false, not all is ok, else all good.
-        """
+        """If returns false, not all is ok, else all good."""
         if self.livepatch_installed is not True:
             # TODO: We need error status, how?
             self.set_status_and_log(LIVEPATCH_NOT_INSTALLED_ERROR, MaintenanceStatus)
@@ -421,25 +413,26 @@ class OperatorMachineCharm(CharmBase):
             if db_joined:
                 self.set_status_and_log("Waiting for postgres...", WaitingStatus)
             else:
-                self.set_status_and_log("Waiting for postgres to select master node...", WaitingStatus)
+                self.set_status_and_log(
+                    "Waiting for postgres to select primary node...",
+                    WaitingStatus,
+                )
             return False
 
         return True
 
     def _check_schema_upgrade_ran(self) -> Tuple[bool, str]:
-        """
-        Checks if a schema upgrade has run, and returns true if an upgrade is needed, false otherwise.
-        """
+        """Check if a schema upgrade has run, and returns true if an upgrade is needed, false otherwise."""
         if self.unit.is_leader():
             result = run_schema_version_check(master_uri=self._state.db_uri)
             if result.splitlines()[0].find(SCHEMA_VERSION_CHECK_ERROR) != -1:
                 return True, result
             return False, result
+        # the unit is not a leader, so it shouldn't worry about performing a schema upgrade.
+        return False, ""
 
     def set_status_and_log(self, msg, status) -> None:
-        """
-        A simple wrapper to log and set unit status simultaneously.
-        """
+        """Log and set unit status simultaneously."""
         logging.info(msg)
         self.unit.status = status(msg)
 
