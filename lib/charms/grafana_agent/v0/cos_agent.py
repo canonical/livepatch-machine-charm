@@ -1,5 +1,5 @@
 # Copyright 2023 Canonical Ltd.
-# See LICENSE file for licensing details.
+# Licensed under the Apache2.0. See LICENSE file in charm source for details.
 
 r"""## Overview.
 
@@ -353,16 +353,13 @@ class COSAgentProvider(Object):
         """Return a prometheus_scrape-like data structure for jobs."""
         job_name_prefix = self._charm.app.name
         return [
-            {"job_name": f"{job_name_prefix}_{key}", **endpoint}
-            for key, endpoint in enumerate(self._metrics_endpoints)
+            {"job_name": f"{job_name_prefix}_{key}", **endpoint} for key, endpoint in enumerate(self._metrics_endpoints)
         ]
 
     @property
     def _metrics_alert_rules(self) -> Dict:
         """Use (for now) the prometheus_scrape AlertRules to initialize this."""
-        alert_rules = AlertRules(
-            query_type="promql", topology=JujuTopology.from_charm(self._charm)
-        )
+        alert_rules = AlertRules(query_type="promql", topology=JujuTopology.from_charm(self._charm))
         alert_rules.add_path(self._metrics_rules, recursive=self._recursive)
         return alert_rules.as_dict()
 
@@ -421,9 +418,7 @@ class COSAgentRequirer(Object):
         self._refresh_events = refresh_events or [self._charm.on.config_changed]
 
         events = self._charm.on[relation_name]
-        self.framework.observe(
-            events.relation_joined, self._on_relation_data_changed
-        )  # TODO: do we need this?
+        self.framework.observe(events.relation_joined, self._on_relation_data_changed)  # TODO: do we need this?
         self.framework.observe(events.relation_changed, self._on_relation_data_changed)
         for event in self._refresh_events:
             self.framework.observe(event, self.trigger_refresh)
@@ -468,8 +463,7 @@ class COSAgentRequirer(Object):
         if len(units) > 1:
             # should never happen
             raise ValueError(
-                f"unexpected error: subordinate relation {cos_agent_relation} "
-                f"should have exactly one unit"
+                f"unexpected error: subordinate relation {cos_agent_relation} " f"should have exactly one unit"
             )
 
         if not (raw := cos_agent_relation.data[principal_unit].get(CosAgentProviderUnitData.KEY)):
@@ -557,9 +551,7 @@ class COSAgentRequirer(Object):
         app_names: Set[str] = set()
 
         for unit in chain((self._charm.unit,), relation.units):
-            if not relation.data.get(unit) or not (
-                raw := relation.data[unit].get(CosAgentPeersUnitData.KEY)
-            ):
+            if not relation.data.get(unit) or not (raw := relation.data[unit].get(CosAgentPeersUnitData.KEY)):
                 logger.info(f"peer {unit} has not set its primary data yet; skipping for now...")
                 continue
 

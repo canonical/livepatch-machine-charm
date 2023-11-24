@@ -1,24 +1,28 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+"""Enable livepatch action."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from charm import OperatorMachineCharm
-
 from ops.charm import ActionEvent
 from ops.model import MaintenanceStatus
 
+if TYPE_CHECKING:
+    from charm import OperatorMachineCharm
+
 
 def on_enable_action(self: OperatorMachineCharm, event: ActionEvent) -> None:
-    """
-    Enables livepatch on-prem via Ubuntu Pro
-    """
+    """Enable livepatch on-prem via Ubuntu Pro."""
     event.log("Attempting to enable livepatch on-prem...")
 
     def fail_action(msg):
-        self.set_status_and_log(msg, MaintenanceStatus),
-        event.log(msg),
-        event.fail(msg),
+        """Log failure and set status."""
+        self.set_status_and_log(msg, MaintenanceStatus)
+        event.log(msg)
+        event.fail(msg)
 
     params = event.params
 

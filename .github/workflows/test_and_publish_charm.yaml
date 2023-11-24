@@ -1,0 +1,16 @@
+name: Publish to edge
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish-to-edge:
+    uses: canonical/operator-workflows/.github/workflows/test_and_publish_charm.yaml@8892eb826818585b397295e40276ddd0c5d3d459
+    secrets: inherit
+    with:
+      integration-test-provider: microk8s
+      integration-test-provider-channel: 1.25-strict/stable
+      integration-test-juju-channel: 3.1/stable
+      integration-test-modules: '["test_charm"]'

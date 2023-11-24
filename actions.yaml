@@ -1,4 +1,4 @@
-# Copyright 2023 Canonical  
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 #
 # Learn more about actions at: https://juju.is/docs/sdk/actions
@@ -26,11 +26,11 @@ set-basic-users:
     users:
       type: string
       description: |
-        A comma delimited list of users and pasword in the form of 
+        A comma delimited list of users and password in the form of 
         <username1:password1>,<username2:password2>,<username3:password3>
     append:
       type: boolean
-      descrption: |
+      description: |
         By using append, it will no longer override all default users. But rather
         append any additional users to the servers configuration.
   required: [users]
