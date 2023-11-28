@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 import pytest_asyncio
-from helpers import (
+from integration.helpers import (
     APP_NAME,
     HAPROXY_NAME,
     POSTGRES_NAME,
@@ -100,8 +100,8 @@ async def deploy(ops_test: OpsTest):
             apps=[HAPROXY_NAME, UBUNTU_ADV_NAME], status="active", raise_on_blocked=False, timeout=600
         )
         # add relations
-        await perform_livepatch_integrations()
-        await perform_other_components_integrations()
+        await perform_livepatch_integrations(ops_test)
+        await perform_other_components_integrations(ops_test)
         # wait for app to be active
         await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", raise_on_blocked=False, timeout=300)
         assert ops_test.model.applications[APP_NAME].units[0].workload_status == "active"

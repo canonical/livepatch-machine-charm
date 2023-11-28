@@ -5,7 +5,7 @@ on:
 
 jobs:
   integration_tests:
-    if: ${{ !always() }} 
+    if: ${{ always() }} 
     name: integration tests
     runs-on: ubuntu-latest
     steps:
