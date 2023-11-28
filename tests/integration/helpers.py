@@ -1,0 +1,152 @@
+#!/usr/bin/env python3
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+"""Livepatch machine charm integration test helpers."""
+
+import logging
+import time
+from pathlib import Path
+
+import requests
+import yaml
+from pytest_operator.plugin import OpsTest
+
+logger = logging.getLogger(__name__)
+
+METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
+APP_NAME = METADATA["name"]
+CONN_NAME = "connection-test"
+WORKER_NAME = f"{APP_NAME}-worker"
+POSTGRES_NAME = "postgresql"
+HAPROXY_NAME = "haproxy"
+UBUNTU_ADV_NAME = "ubuntu-advantage"
+NGINX_NAME = "nginx-ingress-integrator"
+CONN_CONFIG = """connector.name=postgresql
+connection-url=jdbc:postgresql://example.host.com:5432/test
+connection-user=trino
+connection-password=trino
+"""
+USER_WITH_ACCESS = "user1"
+USER_WITHOUT_ACCESS = "user2"
+GROUP_WITH_ACCESS = "commercial-systems"
+POLICY_NAME = "tpch - catalog, schema, table, column"
+REDIS_NAME = "redis-k8s"
+API_AUTH_PAYLOAD = {
+    "username": "admin",
+    "password": "admin",
+    "provider": "db",
+}
+
+
+async def scale(ops_test: OpsTest, app, units):
+    """Scale the application to the provided number and wait for idle.
+
+    Args:
+        ops_test: PyTest object.
+        app: Application to be scaled.
+        units: Number of units required.
+    """
+    await ops_test.model.applications[app].scale(scale=units)
+
+    # Wait for model to settle
+    await ops_test.model.wait_for_idle(
+        apps=[app],
+        status="active",
+        idle_period=30,
+        raise_on_blocked=True,
+        timeout=300,
+        wait_for_exact_units=units,
+    )
+
+    assert len(ops_test.model.applications[app].units) == units
+
+
+async def get_application_url(ops_test: OpsTest, application, port):
+    """Returns application URL from the model.
+
+    Args:
+        ops_test: PyTest object.
+        application: Name of the application.
+        port: Port number of the URL.
+
+    Returns:
+        Application URL of the form {address}:{port}
+    """
+    status = await ops_test.model.get_status()  # noqa: F821
+    address = status["applications"][application].public_address
+    return f"{address}:{port}"
+
+
+async def get_unit_url(ops_test: OpsTest, application, unit, port, protocol="http"):
+    """Returns unit URL from the model.
+
+    Args:
+        ops_test: PyTest object.
+        application: Name of the application.
+        unit: Number of the unit.
+        port: Port number of the URL.
+        protocol: Transfer protocol (default: http).
+
+    Returns:
+        Unit URL of the form {protocol}://{address}:{port}
+    """
+    status = await ops_test.model.get_status()  # noqa: F821
+    address = status["applications"][application]["units"][f"{application}/{unit}"]["address"]
+    return f"{protocol}://{address}:{port}"
+
+
+async def simulate_charm_crash(ops_test: OpsTest):
+    """Simulates the Temporal charm crashing and being re-deployed.
+
+    Args:
+        ops_test: PyTest object.
+    """
+    await ops_test.model.applications[APP_NAME].destroy(force=True)
+    await ops_test.model.block_until(lambda: APP_NAME not in ops_test.model.applications)
+
+    charm = await ops_test.build_charm(".")
+
+    await ops_test.model.deploy(charm, application_name=APP_NAME, num_units=1)
+
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", raise_on_blocked=False, timeout=600)
+
+        await perform_livepatch_integrations(ops_test)
+
+
+async def perform_livepatch_integrations(ops_test: OpsTest):
+    """Add relations between Livepatch charm, postgresql, Ubuntu-advantage, and HAProxy.
+
+    Args:
+        ops_test: PyTest object.
+    """
+    await ops_test.model.integrate(f"{APP_NAME}:db", f"{POSTGRES_NAME}:db")
+    await ops_test.model.integrate(f"{APP_NAME}:website", HAPROXY_NAME)
+    await ops_test.model.integrate(f"{APP_NAME}", UBUNTU_ADV_NAME)
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", raise_on_blocked=False, timeout=300)
+    assert ops_test.model.applications[APP_NAME].units[0].workload_status == "active"
+
+
+async def perform_other_components_integrations(ops_test: OpsTest):
+    """Add relations between postgresql, Ubuntu-advantage, and HAProxy.
+
+    Args:
+        ops_test: PyTest object.
+    """
+    await ops_test.model.integrate(f"{HAPROXY_NAME}", UBUNTU_ADV_NAME)
+    await ops_test.model.integrate(f"{POSTGRES_NAME}", UBUNTU_ADV_NAME)
+    await ops_test.model.wait_for_idle(
+        apps=[HAPROXY_NAME, UBUNTU_ADV_NAME, POSTGRES_NAME], status="active", raise_on_blocked=False, timeout=300
+    )
+    assert ops_test.model.applications[APP_NAME].units[0].workload_status == "active"
+
+
+async def restart_application(ops_test: OpsTest):
+    """Restart Livepatch application.
+
+    Args:
+        ops_test: PyTest object.
+    """
+    action = await ops_test.model.applications[APP_NAME].units[0].run_action("restart")
+    await action.wait()

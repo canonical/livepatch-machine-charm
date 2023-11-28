@@ -2,23 +2,24 @@
 # See LICENSE file for licensing details.
 
 """Integration tests configuration helpers and fixtures."""
+import asyncio
 import logging
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
+from helpers import (
+    APP_NAME,
+    HAPROXY_NAME,
+    POSTGRES_NAME,
+    UBUNTU_ADV_NAME,
+    perform_livepatch_integrations,
+    perform_other_components_integrations,
+)
 from integration.utils import fetch_charm
 from pytest_operator.plugin import OpsTest
 
 LOGGER = logging.getLogger(__name__)
-
-# Fixtures to handle the deployment per each test suite.
-# ops_test is a module fixture, which kind of limits us in what we
-# can do regarding building artifacts required for the tests.
-# As such, we run a subproc validating the snap version
-# such that we don't have to try build it over and over.
-#
-# As for the charm, we should probably do the same. But for
-# now we use the built in ops_test.build_charm
 
 
 @pytest.fixture(name="charm_path", scope="module")
@@ -46,31 +47,62 @@ def render_bundle_fixture(ops_test: OpsTest, charm_path: str):
     yield rendered_bundle_path
 
 
-# TODO: Move this into setupTest funcs and turns the bundlepath & snap/charm build fixture
-# into session fixtures. Then pull bundle path into each setupTest lifecycle func and
-# deploy per each test suite.
-@pytest.fixture(name="deploy_built_bundle", scope="module")
-async def deploy_bundle_function(ops_test: OpsTest, bundle_path: Path):
-    """Deploy bundle function."""
-    juju_cmd = [
-        "deploy",
-        "-m",
-        ops_test.model_full_name,
-        str(bundle_path.absolute()),
-    ]
-    rc, stdout, stderr = await ops_test.juju(*juju_cmd)
-    if rc != 0:
-        raise FailedToDeployBundleError(stderr, stdout)
+@pytest.mark.skip_if_deployed
+@pytest_asyncio.fixture(name="deploy", scope="module")
+async def deploy(ops_test: OpsTest):
+    """Deploy the charm."""
+    charm = await ops_test.build_charm(".")
+    common_constraints = {
+        "cpu-cores": 1,
+        "mem": "2G",
+        "root-disk": "50G",
+    }
+    JAMMY = "jammy"
+    async with ops_test.fast_forward():
+        asyncio.gather(
+            await ops_test.model.deploy(
+                charm,
+                application_name=APP_NAME,
+                num_units=1,
+                constraints=common_constraints,
+                config={"patch-storage.type": "postgres"},
+                series=JAMMY,
+            ),
+            await ops_test.model.deploy(
+                POSTGRES_NAME,
+                channel="14/stable",
+                trust=True,
+                constraints=common_constraints,
+                num_units=1,
+                series=JAMMY,
+            ),
+            await ops_test.model.deploy(
+                HAPROXY_NAME,
+                num_units=1,
+                constraints=common_constraints,
+                config={},
+                series=JAMMY,
+            ),
+            await ops_test.model.deploy(
+                UBUNTU_ADV_NAME,
+                num_units=1,
+                config={"ppa": "ppa:ua-client/stable"},
+                series=JAMMY,
+            ),
+        )
 
-
-class FailedToDeployBundleError(Exception):
-    """Exception raised when bundle fails to deploy.
-
-    Attributes:
-        stderr -- todo
-        stdout -- todo
-    """
-
-    def __init__(self, stderr, stdout):
-        self.message = f"Bundle deploy failed: {(stderr or stdout).strip()}"
-        super().__init__(self.message)
+    async with ops_test.fast_forward():
+        # wait for deployment to be done
+        # TODO(mina1460): Do we need to wait for HAPROXY and ubuntu-advantage?
+        await ops_test.model.wait_for_idle(apps=[POSTGRES_NAME], status="active", raise_on_blocked=False, timeout=600)
+        await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", raise_on_blocked=False, timeout=600)
+        await ops_test.model.wait_for_idle(
+            apps=[HAPROXY_NAME, UBUNTU_ADV_NAME], status="active", raise_on_blocked=False, timeout=600
+        )
+        # add relations
+        await perform_livepatch_integrations()
+        await perform_other_components_integrations()
+        # wait for app to be active
+        await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", raise_on_blocked=False, timeout=300)
+        assert ops_test.model.applications[APP_NAME].units[0].workload_status == "active"
+    return
