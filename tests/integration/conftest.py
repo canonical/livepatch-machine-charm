@@ -56,6 +56,7 @@ async def deploy(ops_test: OpsTest):
         "cpu-cores": 1,
         "mem": 2048,
         "root-disk": 51200,
+        "trust": True,
     }
     jammy = "jammy"
     async with ops_test.fast_forward():
