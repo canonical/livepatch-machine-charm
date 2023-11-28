@@ -1,3 +1,6 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 applications:
   livepatch:
     # This overlay simply uses the locally built version of the charm.
