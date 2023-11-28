@@ -54,8 +54,8 @@ async def deploy(ops_test: OpsTest):
     charm = await ops_test.build_charm(".")
     common_constraints = {
         "cpu-cores": 1,
-        # "mem": "2G",
-        "root-disk": "50G",
+        "mem": 2048,
+        "root-disk": 51200,
     }
     jammy = "jammy"
     async with ops_test.fast_forward():
