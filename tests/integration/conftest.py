@@ -57,7 +57,7 @@ async def deploy(ops_test: OpsTest):
         "mem": "2G",
         "root-disk": "50G",
     }
-    JAMMY = "jammy"
+    jammy = "jammy"
     async with ops_test.fast_forward():
         asyncio.gather(
             await ops_test.model.deploy(
@@ -66,7 +66,7 @@ async def deploy(ops_test: OpsTest):
                 num_units=1,
                 constraints=common_constraints,
                 config={"patch-storage.type": "postgres"},
-                series=JAMMY,
+                series=jammy,
             ),
             await ops_test.model.deploy(
                 POSTGRES_NAME,
@@ -74,20 +74,20 @@ async def deploy(ops_test: OpsTest):
                 trust=True,
                 constraints=common_constraints,
                 num_units=1,
-                series=JAMMY,
+                series=jammy,
             ),
             await ops_test.model.deploy(
                 HAPROXY_NAME,
                 num_units=1,
                 constraints=common_constraints,
                 config={},
-                series=JAMMY,
+                series=jammy,
             ),
             await ops_test.model.deploy(
                 UBUNTU_ADV_NAME,
                 num_units=1,
                 config={"ppa": "ppa:ua-client/stable"},
-                series=JAMMY,
+                series=jammy,
             ),
         )
 

@@ -5,10 +5,8 @@
 """Livepatch machine charm integration test helpers."""
 
 import logging
-import time
 from pathlib import Path
 
-import requests
 import yaml
 from pytest_operator.plugin import OpsTest
 
@@ -16,27 +14,10 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
-CONN_NAME = "connection-test"
-WORKER_NAME = f"{APP_NAME}-worker"
 POSTGRES_NAME = "postgresql"
 HAPROXY_NAME = "haproxy"
 UBUNTU_ADV_NAME = "ubuntu-advantage"
 NGINX_NAME = "nginx-ingress-integrator"
-CONN_CONFIG = """connector.name=postgresql
-connection-url=jdbc:postgresql://example.host.com:5432/test
-connection-user=trino
-connection-password=trino
-"""
-USER_WITH_ACCESS = "user1"
-USER_WITHOUT_ACCESS = "user2"
-GROUP_WITH_ACCESS = "commercial-systems"
-POLICY_NAME = "tpch - catalog, schema, table, column"
-REDIS_NAME = "redis-k8s"
-API_AUTH_PAYLOAD = {
-    "username": "admin",
-    "password": "admin",
-    "provider": "db",
-}
 
 
 async def scale(ops_test: OpsTest, app, units):
