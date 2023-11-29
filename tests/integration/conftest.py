@@ -45,12 +45,6 @@ def render_bundle_fixture(ops_test: OpsTest, charm_path: str):
 async def deploy(ops_test: OpsTest):
     """Deploy the charm."""
     charm = await fetch_charm(ops_test)
-    # common_constraints = {
-    #     "cpu-cores": 1,
-    #     "mem": 2048,
-    #     "root-disk": 51200,
-    #     "trust": True,
-    # }
     jammy = "ubuntu@22.04"
     asyncio.gather(
         ops_test.model.deploy(
@@ -60,19 +54,19 @@ async def deploy(ops_test: OpsTest):
             config={"patch-storage.type": "postgres"},
             base=jammy,
         ),
-        # ops_test.model.deploy(
-        #     POSTGRES_NAME,
-        #     channel="14/stable",
-        #     trust=True,
-        #     num_units=1,
-        #     base=jammy,
-        # ),
-        # ops_test.model.deploy(
-        #     HAPROXY_NAME,
-        #     num_units=1,
-        #     config={},
-        #     base=jammy,
-        # ),
+        ops_test.model.deploy(
+            POSTGRES_NAME,
+            channel="14/stable",
+            trust=True,
+            num_units=1,
+            base=jammy,
+        ),
+        ops_test.model.deploy(
+            HAPROXY_NAME,
+            num_units=1,
+            config={},
+            base=jammy,
+        ),
     )
 
     async with ops_test.fast_forward():
@@ -85,7 +79,7 @@ async def deploy(ops_test: OpsTest):
         LOGGER.info("Waiting for HAProxy")
         await ops_test.model.wait_for_idle(apps=[HAPROXY_NAME], status="active", raise_on_blocked=False, timeout=600)
         # add relations
-        LOGGER.info("Set server.url-template")
+        LOGGER.info("Setting server.url-template")
         url = await get_unit_url(ops_test, application=HAPROXY_NAME, unit=0, port=80)
         url_template = url + "/v1/patches/{filename}"
         LOGGER.info(f"Set server.url-template to {url_template}")
@@ -93,7 +87,7 @@ async def deploy(ops_test: OpsTest):
         LOGGER.info("Making relations")
         await perform_livepatch_integrations(ops_test)
         LOGGER.info("Check for blocked waiting on DB migration")
-        # await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", raise_on_blocked=False, timeout=300)
+        await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", raise_on_blocked=False, timeout=300)
         LOGGER.info("Running migration action")
         action = await ops_test.model.applications[APP_NAME].units[0].run_action("schema-upgrade")
         action = await action.wait()

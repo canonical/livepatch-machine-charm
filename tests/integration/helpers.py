@@ -92,8 +92,8 @@ async def get_unit_message(ops_test: OpsTest, application, unit) -> str:
     return ops_test.model.applications[application].units[unit].workload_status_message
 
 
-async def simulate_charm_crash(ops_test: OpsTest):
-    """Simulates the Livepatch charm crashing and being re-deployed.
+async def simulate_charm_redeploy(ops_test: OpsTest):
+    """Simulates the Livepatch charm being re-deployed.
 
     Args:
         ops_test: PyTest object.
@@ -107,8 +107,8 @@ async def simulate_charm_crash(ops_test: OpsTest):
 
     async with ops_test.fast_forward():
         await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", raise_on_blocked=False, timeout=600)
-
         await perform_livepatch_integrations(ops_test)
+        await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", raise_on_blocked=False, timeout=600)
 
 
 async def perform_livepatch_integrations(ops_test: OpsTest):
