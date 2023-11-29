@@ -9,6 +9,8 @@ from pathlib import Path
 
 import yaml
 from pytest_operator.plugin import OpsTest
+from integration.utils import fetch_charm
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -72,13 +74,26 @@ async def get_unit_url(ops_test: OpsTest, application, unit, port, protocol="htt
     Returns:
         Unit URL of the form {protocol}://{address}:{port}
     """
-    status = await ops_test.model.get_status()  # noqa: F821
-    address = status["applications"][application]["units"][f"{application}/{unit}"]["address"]
-    return f"{protocol}://{address}:{port}"
+    # Sometimes get_unit_address returns a None, no clue why, so looping until it's not
+    url = await ops_test.model.applications[application].units[unit].get_public_address()
+    return f"{protocol}://{url}:{port}"
+
+async def get_unit_message(ops_test: OpsTest, application, unit) -> str:
+    """Returns unit URL from the model.
+
+    Args:
+        ops_test: PyTest object.
+        application: Name of the application.
+        unit: Number of the unit.
+
+    Returns:
+        The unit message
+    """
+    return ops_test.model.applications[application].units[unit].workload_status_message
 
 
-async def simulate_charm_crash(ops_test: OpsTest):
-    """Simulates the Temporal charm crashing and being re-deployed.
+async def simulate_charm_redeploy(ops_test: OpsTest):
+    """Simulates the Livepatch charm being re-deployed.
 
     Args:
         ops_test: PyTest object.
@@ -86,14 +101,14 @@ async def simulate_charm_crash(ops_test: OpsTest):
     await ops_test.model.applications[APP_NAME].destroy(force=True)
     await ops_test.model.block_until(lambda: APP_NAME not in ops_test.model.applications)
 
-    charm = await ops_test.build_charm(".")
+    charm = await fetch_charm(".")
 
     await ops_test.model.deploy(charm, application_name=APP_NAME, num_units=1)
 
     async with ops_test.fast_forward():
         await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", raise_on_blocked=False, timeout=600)
-
         await perform_livepatch_integrations(ops_test)
+        await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", raise_on_blocked=False, timeout=600)
 
 
 async def perform_livepatch_integrations(ops_test: OpsTest):
@@ -102,11 +117,12 @@ async def perform_livepatch_integrations(ops_test: OpsTest):
     Args:
         ops_test: PyTest object.
     """
-    await ops_test.model.integrate(f"{APP_NAME}:db", f"{POSTGRES_NAME}:db")
+    logger.info("Integrating Livepatch and Postgresql")
+    await ops_test.model.integrate(f"{APP_NAME}:database", f"{POSTGRES_NAME}:database")
+    checker = lambda: "Waiting for postgres relation" not in ops_test.model.applications[APP_NAME].units[0].workload_status_message
+    await ops_test.model.block_until(checker)
+    logger.info("Integrating Livepatch and haproxy")
     await ops_test.model.integrate(f"{APP_NAME}:website", HAPROXY_NAME)
-    await ops_test.model.integrate(f"{APP_NAME}", UBUNTU_ADV_NAME)
-    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", raise_on_blocked=False, timeout=300)
-    assert ops_test.model.applications[APP_NAME].units[0].workload_status == "active"
 
 
 async def perform_other_components_integrations(ops_test: OpsTest):

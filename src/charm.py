@@ -207,16 +207,18 @@ class OperatorMachineCharm(CharmBase):
     def _update_status(self, event: UpdateStatusEvent) -> None:
         """
         Perform a simple service health check.
-
-        TODO: Hit debug status and check active checks to give better update statuses.
         """
         logging.info("Updating application status...")
+        current_status = self.unit.status
         if self._check_install_and_relations():
             if self.livepatch_running:
                 self.set_status_and_log("Livepatch running!", ActiveStatus)
-            else:
+            elif current_status == ActiveStatus:
+                # If the status has been set elsewhere, don't override that.
                 # We don't defer, as the server is not running for an unexpected reason
                 self.unit.status = MaintenanceStatus("Livepatch is not running.")
+            else:
+                logging.warning("Livepatch is not running but current status is %s with message %s",current_status.name, current_status.message)
 
     # Legacy database
 
