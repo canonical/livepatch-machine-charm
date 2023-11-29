@@ -8,9 +8,8 @@ import logging
 from pathlib import Path
 
 import yaml
-from pytest_operator.plugin import OpsTest
 from integration.utils import fetch_charm
-import time
+from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +77,7 @@ async def get_unit_url(ops_test: OpsTest, application, unit, port, protocol="htt
     url = await ops_test.model.applications[application].units[unit].get_public_address()
     return f"{protocol}://{url}:{port}"
 
+
 async def get_unit_message(ops_test: OpsTest, application, unit) -> str:
     """Returns unit URL from the model.
 
@@ -119,7 +119,13 @@ async def perform_livepatch_integrations(ops_test: OpsTest):
     """
     logger.info("Integrating Livepatch and Postgresql")
     await ops_test.model.integrate(f"{APP_NAME}:database", f"{POSTGRES_NAME}:database")
-    checker = lambda: "Waiting for postgres relation" not in ops_test.model.applications[APP_NAME].units[0].workload_status_message
+
+    def checker():
+        return (
+            "Waiting for postgres relation"
+            not in ops_test.model.applications[APP_NAME].units[0].workload_status_message
+        )
+
     await ops_test.model.block_until(checker)
     logger.info("Integrating Livepatch and haproxy")
     await ops_test.model.integrate(f"{APP_NAME}:website", HAPROXY_NAME)

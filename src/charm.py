@@ -205,9 +205,7 @@ class OperatorMachineCharm(CharmBase):
             self._update_status(event)
 
     def _update_status(self, event: UpdateStatusEvent) -> None:
-        """
-        Perform a simple service health check.
-        """
+        """Perform a simple service health check."""
         logging.info("Updating application status...")
         current_status = self.unit.status
         if self._check_install_and_relations():
@@ -218,7 +216,11 @@ class OperatorMachineCharm(CharmBase):
                 # We don't defer, as the server is not running for an unexpected reason
                 self.unit.status = MaintenanceStatus("Livepatch is not running.")
             else:
-                logging.warning("Livepatch is not running but current status is %s with message %s",current_status.name, current_status.message)
+                logging.warning(
+                    "Livepatch is not running but current status is %s with message %s",
+                    current_status.name,
+                    current_status.message,
+                )
 
     # Legacy database
 

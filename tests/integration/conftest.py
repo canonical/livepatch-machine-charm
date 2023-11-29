@@ -12,10 +12,8 @@ from integration.helpers import (
     APP_NAME,
     HAPROXY_NAME,
     POSTGRES_NAME,
-    UBUNTU_ADV_NAME,
-    perform_livepatch_integrations,
     get_unit_url,
-    get_unit_message
+    perform_livepatch_integrations,
 )
 from integration.utils import fetch_charm
 from pytest_operator.plugin import OpsTest
@@ -71,7 +69,6 @@ async def deploy(ops_test: OpsTest):
 
     async with ops_test.fast_forward():
         # wait for deployment to be done
-        # TODO(mina1460): Do we need to wait for HAPROXY and ubuntu-advantage?
         LOGGER.info("Waiting for Postgresql")
         await ops_test.model.wait_for_idle(apps=[POSTGRES_NAME], status="active", raise_on_blocked=False, timeout=600)
         LOGGER.info("Waiting for Livepatch")
@@ -83,7 +80,7 @@ async def deploy(ops_test: OpsTest):
         url = await get_unit_url(ops_test, application=HAPROXY_NAME, unit=0, port=80)
         url_template = url + "/v1/patches/{filename}"
         LOGGER.info(f"Set server.url-template to {url_template}")
-        await ops_test.model.applications[APP_NAME].set_config({"server.url-template":url_template})
+        await ops_test.model.applications[APP_NAME].set_config({"server.url-template": url_template})
         LOGGER.info("Making relations")
         await perform_livepatch_integrations(ops_test)
         LOGGER.info("Check for blocked waiting on DB migration")
