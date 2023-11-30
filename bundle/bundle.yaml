@@ -61,7 +61,7 @@ applications:
     options:
       ppa: ppa:ua-client/stable
 relations:
-  - ["livepatch:db", "postgresql:db"]
+  - ["livepatch:database", "postgresql:database"]
   - ["livepatch:website", "haproxy"]
   # Token required for Livepatch to setup
   - ["livepatch", "ubuntu-advantage"]
