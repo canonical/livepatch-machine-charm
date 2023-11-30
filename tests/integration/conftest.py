@@ -55,7 +55,6 @@ async def deploy(ops_test: OpsTest):
         ops_test.model.deploy(
             POSTGRES_NAME,
             channel="14/stable",
-            trust=True,
             num_units=1,
             base=jammy,
         ),
