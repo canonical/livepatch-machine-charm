@@ -17,7 +17,6 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 POSTGRES_NAME = "postgresql"
 HAPROXY_NAME = "haproxy"
-UBUNTU_ADV_NAME = "ubuntu-advantage"
 NGINX_NAME = "nginx-ingress-integrator"
 
 
@@ -42,22 +41,6 @@ async def scale(ops_test: OpsTest, app, units):
     )
 
     assert len(ops_test.model.applications[app].units) == units
-
-
-async def get_application_url(ops_test: OpsTest, application, port):
-    """Returns application URL from the model.
-
-    Args:
-        ops_test: PyTest object.
-        application: Name of the application.
-        port: Port number of the URL.
-
-    Returns:
-        Application URL of the form {address}:{port}
-    """
-    status = await ops_test.model.get_status()  # noqa: F821
-    address = status["applications"][application].public_address
-    return f"{address}:{port}"
 
 
 async def get_unit_url(ops_test: OpsTest, application, unit, port, protocol="http"):
@@ -137,20 +120,6 @@ async def perform_livepatch_integrations(ops_test: OpsTest):
     await ops_test.model.block_until(checker)
     logger.info("Integrating Livepatch and haproxy")
     await ops_test.model.integrate(f"{APP_NAME}:website", HAPROXY_NAME)
-
-
-async def perform_other_components_integrations(ops_test: OpsTest):
-    """Add relations between postgresql, Ubuntu-advantage, and HAProxy.
-
-    Args:
-        ops_test: PyTest object.
-    """
-    await ops_test.model.integrate(f"{HAPROXY_NAME}", UBUNTU_ADV_NAME)
-    await ops_test.model.integrate(f"{POSTGRES_NAME}", UBUNTU_ADV_NAME)
-    await ops_test.model.wait_for_idle(
-        apps=[HAPROXY_NAME, UBUNTU_ADV_NAME, POSTGRES_NAME], status="active", raise_on_blocked=False, timeout=300
-    )
-    assert ops_test.model.applications[APP_NAME].units[0].workload_status == "active"
 
 
 async def restart_application(ops_test: OpsTest):
