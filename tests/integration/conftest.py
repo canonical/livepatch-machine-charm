@@ -79,7 +79,10 @@ async def deploy(ops_test: OpsTest):
         url = await get_unit_url(ops_test, application=HAPROXY_NAME, unit=0, port=80)
         url_template = url + "/v1/patches/{filename}"
         LOGGER.info(f"Set server.url-template to {url_template}")
-        await ops_test.model.applications[APP_NAME].set_config({"server.url-template": url_template})
+        await ops_test.model.applications[APP_NAME].set_config({"server.url-template":url_template})
+        await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", raise_on_blocked=False, timeout=300)
+        LOGGER.info("Check for blocked waiting on DB relation")
+        assert ops_test.model.applications[APP_NAME].units[0].workload_status_message == "Waiting for postgres relation to be established."
         LOGGER.info("Making relations")
         await perform_livepatch_integrations(ops_test)
         LOGGER.info("Check for blocked waiting on DB migration")
