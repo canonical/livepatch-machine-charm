@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Upload charm to charmhub
-        uses: canonical/charming-actions/upload-charm@2.3.0
+        uses: canonical/charming-actions/upload-charm@2.4.0
         with:
           credentials: "${{ secrets.CHARMCRAFT_AUTH }}"
           github-token: "${{ secrets.GITHUB_TOKEN }}"
