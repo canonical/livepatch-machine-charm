@@ -133,8 +133,8 @@ class OperatorMachineCharm(CharmBase):
         logger.info("Current install state: %s", self.livepatch_installed)
         if not self.livepatch_installed:
             logger.info("Installing livepatch")
-            # Ensure it is latest revision on edge.
-            self.get_livepatch_snap.ensure(SnapState.Latest, channel="edge")
+            # Ensure it is latest revision on stable.
+            self.get_livepatch_snap.ensure(SnapState.Latest, channel="stable")
             self.set_status_and_log(SUCCESSFUL_INSTALL, WaitingStatus)
         else:
             self.set_status_and_log("Livepatch snap already installed...", WaitingStatus)

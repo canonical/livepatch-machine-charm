@@ -101,7 +101,7 @@ async def simulate_charm_redeploy(ops_test: OpsTest):
     await ops_test.model.applications[APP_NAME].destroy(force=True)
     await ops_test.model.block_until(lambda: APP_NAME not in ops_test.model.applications)
 
-    charm = await fetch_charm(".")
+    charm = await fetch_charm(ops_test)
 
     await ops_test.model.deploy(charm, application_name=APP_NAME, num_units=1)
 
