@@ -21,7 +21,9 @@ jobs:
       CHARMCRAFT_AUTH: ${{ secrets.CHARMCRAFT_AUTH }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
       - name: Upload charm to charmhub
         uses: canonical/charming-actions/upload-charm@2.4.0
         with:
