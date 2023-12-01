@@ -74,7 +74,6 @@ async def deploy(ops_test: OpsTest):
         await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", raise_on_blocked=False, timeout=600)
         LOGGER.info("Waiting for HAProxy")
         await ops_test.model.wait_for_idle(apps=[HAPROXY_NAME], status="active", raise_on_blocked=False, timeout=600)
-        # add relations
         LOGGER.info("Setting server.url-template")
         url = await get_unit_url(ops_test, application=HAPROXY_NAME, unit=0, port=80)
         url_template = url + "/v1/patches/{filename}"
