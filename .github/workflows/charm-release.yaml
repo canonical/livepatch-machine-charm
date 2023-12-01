@@ -1,4 +1,4 @@
-name: ReleaseCharm
+name: Release Charm
 
 on:
   workflow_dispatch:
