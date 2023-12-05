@@ -7,6 +7,7 @@ on:
           type: choice
           description: Channel to release bundle into
           required: true
+          default: 'machine/edge'
           options:
             - machine/edge
             - machine/beta
