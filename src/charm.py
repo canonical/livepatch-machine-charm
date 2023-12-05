@@ -13,14 +13,14 @@ from typing import Tuple, Union
 import pgsql
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
-from charms.operator_libs_linux.v1.snap import Snap, SnapCache, SnapError, SnapState
+from charms.operator_libs_linux.v2.snap import Snap, SnapCache, SnapError, SnapState
 from ops.charm import CharmBase, ConfigChangedEvent, StartEvent, UpdateStatusEvent
 from ops.framework import StoredState
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 
 from constants.errors import SCHEMA_VERSION_CHECK_ERROR
-from constants.snap import SERVER_SNAP_NAME
+from constants.snap import SERVER_SNAP_NAME, SERVER_SNAP_REVISION
 from constants.statuses import (
     AWAIT_POSTGRES_RELATION,
     CHECKING_DB_VERS,
@@ -134,7 +134,8 @@ class OperatorMachineCharm(CharmBase):
         if not self.livepatch_installed:
             logger.info("Installing livepatch")
             # Ensure it is latest revision on stable.
-            self.get_livepatch_snap.ensure(SnapState.Latest, channel="stable")
+            self.get_livepatch_snap.ensure(SnapState.Latest, revision=SERVER_SNAP_REVISION)
+            self.get_livepatch_snap.hold()
             self.set_status_and_log(SUCCESSFUL_INSTALL, WaitingStatus)
         else:
             self.set_status_and_log("Livepatch snap already installed...", WaitingStatus)
