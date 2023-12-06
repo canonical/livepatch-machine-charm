@@ -2,17 +2,6 @@ name: Release Bundle
 
 on:
   workflow_dispatch:
-    inputs:
-        channel:
-          type: choice
-          description: Channel to release bundle into
-          required: true
-          default: 'machine/edge'
-          options:
-            - machine/edge
-            - machine/beta
-            - machine/candidate
-            - machine/stable
 
 run-name: Release bundle by @${{ github.actor }}
 
@@ -22,10 +11,12 @@ jobs:
     steps:
       - name: checkout code
         uses: actions/checkout@v4
+      # Note the use of the upload-charm action. Bundles can be treated as charms.
       - name: Upload Bundle
-        uses: canonical/charming-actions/upload-bundle@main
+        uses: canonical/charming-actions/upload-charm@main
         with:
             credentials: "${{ secrets.CHARMCRAFT_AUTH }}"
-            bundle-path: ./bundle
+            charm-path: ./bundle
             github-token: "${{ secrets.GITHUB_TOKEN }}"
-            channel: ${{ github.event.inputs.channel }}
+            channel: "machine/edge"
+            tag-prefix: "bundle"
