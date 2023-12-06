@@ -24,7 +24,7 @@ on:
 jobs:
   promote:
     name: Promote Charm
-    uses: canonical/operator-workflows/.github/workflows/promote_charm.yaml@8892eb826818585b397295e40276ddd0c5d3d459
+    uses: canonical/operator-workflows/.github/workflows/promote_charm.yaml@dc2f6a17e780cf34322c535f75eb5725f3180ebe
     with:
       origin-channel: ${{ github.event.inputs.origin-channel }}
       destination-channel: ${{ github.event.inputs.destination-channel }}
