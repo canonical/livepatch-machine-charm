@@ -1,5 +1,5 @@
 ops >= 2.0.0
 ops-lib-pgsql
 bcrypt
-pydantic < 2
+pydantic <3
 cosl
