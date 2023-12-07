@@ -1,0 +1,39 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+#
+# Learn more about actions at: https://juju.is/docs/sdk/actions
+
+enable:
+  description: |
+    Enables livepatch on-prem.
+  params:
+    token:
+      type: string
+      description: |
+        A Ubuntu Pro token.
+  required: [token]
+
+schema-upgrade:
+  description: Upgrade the application database schema.
+
+set-basic-users:
+  description: |
+    Sets the basic users for the server
+
+    This action overrides all existing users currently set
+    in livepatch, unless the append param is provided.
+  params:
+    users:
+      type: string
+      description: |
+        A comma delimited list of users and password in the form of 
+        <username1:password1>,<username2:password2>,<username3:password3>
+    append:
+      type: boolean
+      description: |
+        By using append, it will no longer override all default users. But rather
+        append any additional users to the servers configuration.
+  required: [users]
+
+restart:
+  description: Restart livepatch service daemon.

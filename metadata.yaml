@@ -1,0 +1,45 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+#
+# For a complete list of supported options, see:
+# https://juju.is/docs/sdk/metadata-reference: canonical-livepatch-server
+
+name: canonical-livepatch-server
+display-name: Canonical Livepatch Server
+summary: Canonical Livepatch Server
+description: |
+  The purpose of the Livepatch Server is to pull in patch updates from
+  Canonical and allow more fine-grained control of patch rollout to the 
+  machines running on your infrastructure.
+maintainers:
+  - Canonical Commercial Systems Team <jaas-crew@lists.canonical.com>
+website: https://ubuntu.com/security/livepatch
+docs: https://discourse.ubuntu.com/t/ubuntu-livepatch-service/22723
+issues: https://bugs.launchpad.net/livepatch-onprem
+source: https://github.com/canonical/livepatch-machine-charm
+
+requires:
+  # Note: The same relation to postgres is used for both
+  # patch storage and the server
+  database-legacy:
+    # This relation is DEPRECATED and is only kept for backward compatibility
+    # purposes.
+    #
+    # New deployments should use the `database` relation. Integration with both
+    # of these relations at the same time will result in an error.
+    interface: pgsql
+    limit: 1
+  database:
+    interface: postgresql_client
+    limit: 1 # Most charms only handle a single PostgreSQL Application.
+
+provides:
+  website:
+    interface: http
+  cos-agent:
+    interface: cos_agent
+    limit: 1
+
+peers:
+  livepatch:
+    interface: livepatch
