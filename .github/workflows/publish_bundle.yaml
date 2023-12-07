@@ -1,0 +1,22 @@
+name: Release Bundle
+
+on:
+  workflow_dispatch:
+
+run-name: Release bundle by @${{ github.actor }}
+
+jobs:
+  upload-livepatch-operator-machine-bundle:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      # Note the use of the upload-charm action. Bundles can be treated as charms.
+      - name: Upload Bundle
+        uses: canonical/charming-actions/upload-charm@main
+        with:
+            credentials: "${{ secrets.CHARMCRAFT_AUTH }}"
+            charm-path: ./bundle
+            github-token: "${{ secrets.GITHUB_TOKEN }}"
+            channel: "machine/edge"
+            tag-prefix: "bundle"
