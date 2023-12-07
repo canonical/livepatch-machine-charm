@@ -16,7 +16,7 @@ jobs:
 # Upload workflows for new charms.
 # The action will build and release the charm
   upload-livepatch-operator-machine:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       CHARMCRAFT_AUTH: ${{ secrets.CHARMCRAFT_AUTH }}
     steps:
