@@ -1,7 +1,6 @@
+#!/bin/bash
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-
-#!/bin/bash
 
 # This script updates the Livepatch Server Snap revision constant used by the charm
 # and creates a new branch of the form "server-snap-revision-$1".
