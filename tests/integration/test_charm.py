@@ -9,7 +9,7 @@ import logging
 import pytest
 import requests
 from integration.conftest import deploy  # noqa: F401, pylint: disable=W0611
-from integration.helpers import APP_NAME, get_unit_url, simulate_charm_redeploy, scale
+from integration.helpers import APP_NAME, get_unit_url, scale, simulate_charm_redeploy
 from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class TestDeployment:
     """Integration tests for charm."""
 
-    async def test_livepatch_server(self, ops_test: OpsTest, unit:int=0):
+    async def test_livepatch_server(self, ops_test: OpsTest, unit: int = 0):
         """Perform GET request on the Livepatch unit."""
         url = await get_unit_url(ops_test, application=APP_NAME, unit=unit, port=8080)
         logger.info("curling app address: %s", url)
@@ -37,7 +37,7 @@ class TestDeployment:
         await simulate_charm_redeploy(ops_test)
         await self.test_livepatch_server(ops_test)
         return
-    
+
     async def test_scale_up_and_down(self, ops_test: OpsTest):
         """Scale the livepatch machine charm up and then down."""
         await scale(app=APP_NAME, ops_test=ops_test, units=2)
@@ -45,4 +45,3 @@ class TestDeployment:
         await self.test_livepatch_server(ops_test, unit=1)
         await scale(app=APP_NAME, ops_test=ops_test, units=1)
         await self.test_livepatch_server(ops_test, unit=0)
-        
