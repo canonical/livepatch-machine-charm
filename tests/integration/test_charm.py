@@ -40,8 +40,8 @@ class TestDeployment:
 
     async def test_scale_up_and_down(self, ops_test: OpsTest):
         """Scale the livepatch machine charm up and then down."""
-        await scale(app=APP_NAME, ops_test=ops_test, units=2)
+        await scale(application_name=APP_NAME, ops_test=ops_test, count=2)
         await self.test_livepatch_server(ops_test, unit=0)
         await self.test_livepatch_server(ops_test, unit=1)
-        await scale(app=APP_NAME, ops_test=ops_test, units=1)
+        await scale(application_name=APP_NAME, ops_test=ops_test, count=1)
         await self.test_livepatch_server(ops_test, unit=0)
