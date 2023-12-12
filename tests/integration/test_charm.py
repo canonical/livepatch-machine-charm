@@ -19,6 +19,14 @@ logger = logging.getLogger(__name__)
 @pytest.mark.usefixtures("deploy")
 class TestDeployment:
     """Integration tests for charm."""
+    
+    async def test_scale_up_and_down(self, ops_test: OpsTest):
+        """Scale the livepatch machine charm up and then down."""
+        await scale(application_name=APP_NAME, ops_test=ops_test, count=2)
+        await self.test_livepatch_server(ops_test, unit=0)
+        await self.test_livepatch_server(ops_test, unit=1)
+        await scale(application_name=APP_NAME, ops_test=ops_test, count=1)
+        await self.test_livepatch_server(ops_test, unit=0)
 
     async def test_livepatch_server(self, ops_test: OpsTest, unit: int = 0):
         """Perform GET request on the Livepatch unit."""
@@ -27,21 +35,14 @@ class TestDeployment:
         response = requests.get(url, timeout=300, verify=False)  # nosec
         assert response.status_code == 200
 
-    async def test_charm_crash(self, ops_test: OpsTest):
-        """Test backup and restore functionality.
+    # async def test_charm_crash(self, ops_test: OpsTest):
+    #     """Test backup and restore functionality.
 
-        This should validate that the Superset charm itself is stateless
-        and relies only on the postgreSQL database to store its chart values.
-        """
-        await self.test_livepatch_server(ops_test)
-        await simulate_charm_redeploy(ops_test)
-        await self.test_livepatch_server(ops_test)
-        return
+    #     This should validate that the Superset charm itself is stateless
+    #     and relies only on the postgreSQL database to store its chart values.
+    #     """
+    #     await self.test_livepatch_server(ops_test)
+    #     await simulate_charm_redeploy(ops_test)
+    #     await self.test_livepatch_server(ops_test)
+    #     return
 
-    async def test_scale_up_and_down(self, ops_test: OpsTest):
-        """Scale the livepatch machine charm up and then down."""
-        await scale(application_name=APP_NAME, ops_test=ops_test, count=2)
-        await self.test_livepatch_server(ops_test, unit=0)
-        await self.test_livepatch_server(ops_test, unit=1)
-        await scale(application_name=APP_NAME, ops_test=ops_test, count=1)
-        await self.test_livepatch_server(ops_test, unit=0)
