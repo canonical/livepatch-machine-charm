@@ -173,6 +173,8 @@ class OperatorMachineCharm(CharmBase):
 
         configuration["database.connection-string"] = self._state.db_uri
 
+        print("Config of database.connection-string is: ", self._state.db_uri)
+
         # General configuration override logic
         pg_conn_str_conf = "patch-storage.postgres-connection-string"
         if len(self.config.get(pg_conn_str_conf)) == 0:
@@ -273,7 +275,9 @@ class OperatorMachineCharm(CharmBase):
             # "fallback_application_name" (SQLSTATE 42704)`.
             # wokeignore:rule=master
             self._state.db_uri = event.master.uri.split("?", 1)[0]
+            print("setting self._state.db_uri here")
         else:
+            print("possible bug in setting self._state.db_uri here to None")
             self._state.db_uri = None
 
         # if self._check_install_and_relations():
@@ -310,6 +314,7 @@ class OperatorMachineCharm(CharmBase):
     def _on_database_event(self, event) -> None:
         """Database event handler."""
         if not self.model.unit.is_leader():
+            print("Possible bug from this. We should set self._state.db_uri before returning")
             return
 
         logging.info("(postgresql) RELATION_JOINED event fired.")
