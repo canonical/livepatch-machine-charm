@@ -9,7 +9,11 @@ import logging
 import pytest
 import requests
 from integration.conftest import deploy  # noqa: F401, pylint: disable=W0611
-from integration.helpers import APP_NAME, get_unit_url, scale, simulate_charm_redeploy
+from integration.helpers import (  # , simulate_charm_redeploy
+    APP_NAME,
+    get_unit_url,
+    scale,
+)
 from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
@@ -19,7 +23,7 @@ logger = logging.getLogger(__name__)
 @pytest.mark.usefixtures("deploy")
 class TestDeployment:
     """Integration tests for charm."""
-    
+
     async def test_scale_up_and_down(self, ops_test: OpsTest):
         """Scale the livepatch machine charm up and then down."""
         await scale(application_name=APP_NAME, ops_test=ops_test, count=2)
@@ -45,4 +49,3 @@ class TestDeployment:
     #     await simulate_charm_redeploy(ops_test)
     #     await self.test_livepatch_server(ops_test)
     #     return
-

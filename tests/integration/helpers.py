@@ -35,7 +35,11 @@ async def scale(ops_test: OpsTest, application_name: str, count: int) -> None:
         units = [unit.name for unit in ops_test.model.applications[application_name].units[0:-change]]
         await ops_test.model.applications[application_name].destroy_units(*units)
     await ops_test.model.wait_for_idle(
-        apps=[application_name], status="active", timeout=2000, wait_for_exact_units=count
+        apps=[application_name],
+        status="active",
+        timeout=2000,
+        wait_for_exact_units=count,
+        raise_on_blocked=False,
     )
 
     assert len(ops_test.model.applications[application_name].units) == count

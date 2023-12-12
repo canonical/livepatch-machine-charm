@@ -155,7 +155,7 @@ class OperatorMachineCharm(CharmBase):
         for setting, error_msg in required_settings.items():
             if self.config.get(setting) in (None, ""):
                 self.set_status_and_log(error_msg, BlockedStatus)
-                logger.warning(error_msg)
+                logger.error(error_msg)
                 return
 
         if not self._check_install_and_relations():
@@ -172,8 +172,6 @@ class OperatorMachineCharm(CharmBase):
             configuration["server.is-leader"] = False
 
         configuration["database.connection-string"] = self._state.db_uri
-
-        print("Config of database.connection-string is: ", self._state.db_uri)
 
         # General configuration override logic
         pg_conn_str_conf = "patch-storage.postgres-connection-string"
