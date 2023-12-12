@@ -15,7 +15,6 @@ from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.operator_libs_linux.v2.snap import Snap, SnapCache, SnapError, SnapState
 from ops.charm import CharmBase, ConfigChangedEvent, StartEvent, UpdateStatusEvent
-from ops.framework import StoredState
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 
@@ -28,6 +27,7 @@ from constants.statuses import (
     LIVEPATCH_NOT_INSTALLED_ERROR,
     SUCCESSFUL_INSTALL,
 )
+from state import State
 from util.schema_tool import run_schema_version_check
 
 logger = logging.getLogger(__name__)
@@ -43,8 +43,6 @@ DATABASE_RELATION_LEGACY = "database-legacy"
 
 class OperatorMachineCharm(CharmBase):
     """Livepatch on-premise machine charm."""
-
-    _state: StoredState = StoredState()
 
     @property
     def get_livepatch_snap(self) -> Snap:
@@ -64,7 +62,8 @@ class OperatorMachineCharm(CharmBase):
     def __init__(self, *args) -> None:
         """Init function."""
         super().__init__(*args)
-        self._state.set_default(db_uri=None, db_ro_uris=[])
+
+        self._state = State(self.app, lambda: self.model.get_relation("livepatch"))
 
         # Setup snapcache
         self.snap_cache = SnapCache()
@@ -256,6 +255,9 @@ class OperatorMachineCharm(CharmBase):
         The internal snap configuration is updated to reflect this.
         """
         logging.info("(postgresql, legacy database relation) MASTER_CHANGED event fired.")
+
+        if not self.model.unit.is_leader():
+            return
 
         if event.database != DATABASE_NAME:
             logging.debug("(legacy database relation) Database setup not complete yet, returning.")
