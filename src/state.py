@@ -14,7 +14,7 @@ def requires_state_setter(func):
     def wrapper(self, event):
         if self.unit.is_leader() and self._state.is_ready():
             return func(self, event)
-        return
+        return None
 
     return wrapper
 
@@ -27,7 +27,7 @@ def requires_state(func):
         if self._state.is_ready():
             return func(self, event)
         event.defer()
-        return
+        return None
 
     return wrapper
 
