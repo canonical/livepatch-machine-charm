@@ -39,13 +39,13 @@ class TestDeployment:
         response = requests.get(url, timeout=300, verify=False)  # nosec
         assert response.status_code == 200
 
-    # async def test_charm_crash(self, ops_test: OpsTest):
-    #     """Test backup and restore functionality.
+    async def test_charm_crash(self, ops_test: OpsTest):
+        """Test backup and restore functionality.
 
-    #     This should validate that the Superset charm itself is stateless
-    #     and relies only on the postgreSQL database to store its chart values.
-    #     """
-    #     await self.test_livepatch_server(ops_test)
-    #     await simulate_charm_redeploy(ops_test)
-    #     await self.test_livepatch_server(ops_test)
-    #     return
+        This should validate that the Superset charm itself is stateless
+        and relies only on the postgreSQL database to store its chart values.
+        """
+        await self.test_livepatch_server(ops_test)
+        await simulate_charm_redeploy(ops_test)
+        await self.test_livepatch_server(ops_test)
+        return

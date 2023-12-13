@@ -171,7 +171,6 @@ class OperatorMachineCharm(CharmBase):
             configuration["server.is-leader"] = False
 
         configuration["database.connection-string"] = self._state.db_uri
-
         # General configuration override logic
         pg_conn_str_conf = "patch-storage.postgres-connection-string"
         if len(self.config.get(pg_conn_str_conf)) == 0:
@@ -180,7 +179,6 @@ class OperatorMachineCharm(CharmBase):
         if self.config.get("patch-sync.enabled") == "True":
             # TODO: Test this alex
             configuration["patch-sync.id"] = self.model.uuid
-
         try:
             prefixed_configuration = {f"lp.{key}": val for key, val in configuration.items()}
             self.get_livepatch_snap.set(prefixed_configuration)
@@ -275,9 +273,7 @@ class OperatorMachineCharm(CharmBase):
             # "fallback_application_name" (SQLSTATE 42704)`.
             # wokeignore:rule=master
             self._state.db_uri = event.master.uri.split("?", 1)[0]
-            print("setting self._state.db_uri here")
         else:
-            print("possible bug in setting self._state.db_uri here to None")
             self._state.db_uri = None
 
         # if self._check_install_and_relations():
@@ -314,7 +310,6 @@ class OperatorMachineCharm(CharmBase):
     def _on_database_event(self, event) -> None:
         """Database event handler."""
         if not self.model.unit.is_leader():
-            print("Possible bug from this. We should set self._state.db_uri before returning")
             return
 
         logging.info("(postgresql) RELATION_JOINED event fired.")
@@ -395,14 +390,12 @@ class OperatorMachineCharm(CharmBase):
         """Start (or restart if the flag is given) the livepatch snap."""
         self.set_status_and_log(CHECKING_DB_VERS, WaitingStatus)
         upgrade_required, version = self._check_schema_upgrade_ran()
-
         if upgrade_required:
             self.set_status_and_log(
                 "Database not initialised, please run the schema-upgrade action.",
                 BlockedStatus,
             )
             return False
-
         logging.info("Database has been migrated. Current version: %s", version)
         return True
 
@@ -428,7 +421,6 @@ class OperatorMachineCharm(CharmBase):
                     WaitingStatus,
                 )
             return False
-
         return True
 
     def _check_schema_upgrade_ran(self) -> Tuple[bool, str]:
