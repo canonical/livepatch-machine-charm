@@ -15,7 +15,6 @@ from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.operator_libs_linux.v2.snap import Snap, SnapCache, SnapError, SnapState
 from ops.charm import CharmBase, ConfigChangedEvent, StartEvent, UpdateStatusEvent
-from ops.framework import StoredState
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 
@@ -28,6 +27,7 @@ from constants.statuses import (
     LIVEPATCH_NOT_INSTALLED_ERROR,
     SUCCESSFUL_INSTALL,
 )
+from state import State
 from util.schema_tool import run_schema_version_check
 
 logger = logging.getLogger(__name__)
@@ -43,8 +43,6 @@ DATABASE_RELATION_LEGACY = "database-legacy"
 
 class OperatorMachineCharm(CharmBase):
     """Livepatch on-premise machine charm."""
-
-    _state: StoredState = StoredState()
 
     @property
     def get_livepatch_snap(self) -> Snap:
@@ -64,7 +62,8 @@ class OperatorMachineCharm(CharmBase):
     def __init__(self, *args) -> None:
         """Init function."""
         super().__init__(*args)
-        self._state.set_default(db_uri=None, db_ro_uris=[])
+
+        self._state = State(self.app, lambda: self.model.get_relation("livepatch"))
 
         # Setup snapcache
         self.snap_cache = SnapCache()
@@ -155,7 +154,7 @@ class OperatorMachineCharm(CharmBase):
         for setting, error_msg in required_settings.items():
             if self.config.get(setting) in (None, ""):
                 self.set_status_and_log(error_msg, BlockedStatus)
-                logger.warning(error_msg)
+                logger.error(error_msg)
                 return
 
         if not self._check_install_and_relations():
@@ -172,7 +171,6 @@ class OperatorMachineCharm(CharmBase):
             configuration["server.is-leader"] = False
 
         configuration["database.connection-string"] = self._state.db_uri
-
         # General configuration override logic
         pg_conn_str_conf = "patch-storage.postgres-connection-string"
         if len(self.config.get(pg_conn_str_conf)) == 0:
@@ -181,7 +179,6 @@ class OperatorMachineCharm(CharmBase):
         if self.config.get("patch-sync.enabled") == "True":
             # TODO: Test this alex
             configuration["patch-sync.id"] = self.model.uuid
-
         try:
             prefixed_configuration = {f"lp.{key}": val for key, val in configuration.items()}
             self.get_livepatch_snap.set(prefixed_configuration)
@@ -256,6 +253,9 @@ class OperatorMachineCharm(CharmBase):
         The internal snap configuration is updated to reflect this.
         """
         logging.info("(postgresql, legacy database relation) MASTER_CHANGED event fired.")
+
+        if not self.model.unit.is_leader():
+            return
 
         if event.database != DATABASE_NAME:
             logging.debug("(legacy database relation) Database setup not complete yet, returning.")
@@ -390,14 +390,12 @@ class OperatorMachineCharm(CharmBase):
         """Start (or restart if the flag is given) the livepatch snap."""
         self.set_status_and_log(CHECKING_DB_VERS, WaitingStatus)
         upgrade_required, version = self._check_schema_upgrade_ran()
-
         if upgrade_required:
             self.set_status_and_log(
                 "Database not initialised, please run the schema-upgrade action.",
                 BlockedStatus,
             )
             return False
-
         logging.info("Database has been migrated. Current version: %s", version)
         return True
 
@@ -423,7 +421,6 @@ class OperatorMachineCharm(CharmBase):
                     WaitingStatus,
                 )
             return False
-
         return True
 
     def _check_schema_upgrade_ran(self) -> Tuple[bool, str]:
