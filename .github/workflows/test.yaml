@@ -5,5 +5,5 @@ on:
 
 jobs:
   unit-tests:
-    uses: canonical/operator-workflows/.github/workflows/test.yaml@8892eb826818585b397295e40276ddd0c5d3d459
+    uses: canonical/operator-workflows/.github/workflows/test.yaml@9c12e16367cebd435343c14c253c60ccd8c13d54
     secrets: inherit
