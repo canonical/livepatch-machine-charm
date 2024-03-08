@@ -1,4 +1,4 @@
-# Copyright 2023 Canonical Ltd.
+# Copyright 2024 Canonical Ltd.
 # Licensed under the Apache2.0. See LICENSE file in charm source for details.
 
 # Copyright 2021 Canonical Ltd.
@@ -187,9 +187,7 @@ class SnapAPIError(Error):
 
     def __repr__(self):
         """Represent the SnapAPIError class."""
-        return "APIError({!r}, {!r}, {!r}, {!r})".format(
-            self.body, self.code, self.status, self._message
-        )
+        return "APIError({!r}, {!r}, {!r}, {!r})".format(self.body, self.code, self.status, self._message)
 
 
 class SnapState(Enum):
@@ -280,11 +278,7 @@ class Snap(object):
         try:
             return subprocess.check_output(args, universal_newlines=True)
         except CalledProcessError as e:
-            raise SnapError(
-                "Snap: {!r}; command {!r} failed with output = {!r}".format(
-                    self._name, args, e.output
-                )
-            )
+            raise SnapError("Snap: {!r}; command {!r} failed with output = {!r}".format(self._name, args, e.output))
 
     def _snap_daemons(
         self,
@@ -385,9 +379,7 @@ class Snap(object):
         args = ["logs", "-n={}".format(num_lines)] if num_lines else ["logs"]
         return self._snap_daemons(args, services).stdout
 
-    def connect(
-        self, plug: str, service: Optional[str] = None, slot: Optional[str] = None
-    ) -> None:
+    def connect(self, plug: str, service: Optional[str] = None, slot: Optional[str] = None) -> None:
         """Connect a plug to a slot.
 
         Args:
@@ -440,15 +432,9 @@ class Snap(object):
         try:
             subprocess.check_output(args, universal_newlines=True)
         except CalledProcessError as e:
-            raise SnapError(
-                "Snap: {!r}; command {!r} failed with output = {!r}".format(
-                    self._name, args, e.output
-                )
-            )
+            raise SnapError("Snap: {!r}; command {!r} failed with output = {!r}".format(self._name, args, e.output))
 
-    def restart(
-        self, services: Optional[List[str]] = None, reload: Optional[bool] = False
-    ) -> None:
+    def restart(self, services: Optional[List[str]] = None, reload: Optional[bool] = False) -> None:
         """Restarts a snap's services.
 
         Args:
@@ -997,9 +983,7 @@ def _wrap_snap_operations(
             if state is SnapState.Absent:
                 snap.ensure(state=SnapState.Absent)
             else:
-                snap.ensure(
-                    state=state, classic=classic, channel=channel, cohort=cohort, revision=revision
-                )
+                snap.ensure(state=state, classic=classic, channel=channel, cohort=cohort, revision=revision)
             snaps["success"].append(snap)
         except SnapError as e:
             logger.warning("Failed to {} snap {}: {}!".format(op, s, e.message))
@@ -1009,16 +993,12 @@ def _wrap_snap_operations(
             snaps["failed"].append(s)
 
     if len(snaps["failed"]):
-        raise SnapError(
-            "Failed to install or refresh snap(s): {}".format(", ".join(list(snaps["failed"])))
-        )
+        raise SnapError("Failed to install or refresh snap(s): {}".format(", ".join(list(snaps["failed"]))))
 
     return snaps["success"] if len(snaps["success"]) > 1 else snaps["success"][0]
 
 
-def install_local(
-    filename: str, classic: Optional[bool] = False, dangerous: Optional[bool] = False
-) -> Snap:
+def install_local(filename: str, classic: Optional[bool] = False, dangerous: Optional[bool] = False) -> Snap:
     """Perform a snap operation.
 
     Args:
@@ -1048,9 +1028,7 @@ def install_local(
         try:
             return c[snap_name]
         except SnapAPIError as e:
-            logger.error(
-                "Could not find snap {} when querying Snapd socket: {}".format(snap_name, e.body)
-            )
+            logger.error("Could not find snap {} when querying Snapd socket: {}".format(snap_name, e.body))
             raise SnapError("Failed to find snap {} in Snap cache".format(snap_name))
     except CalledProcessError as e:
         raise SnapError("Could not install snap {}: {}".format(filename, e.output))
