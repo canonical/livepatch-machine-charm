@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2023 Canonical Ltd.
+# Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 # This script updates the Livepatch Server Snap revision constant used by the charm
