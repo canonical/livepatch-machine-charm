@@ -39,6 +39,15 @@ options:
 
       Once the queue is reached, subsequent requests are rejected.
     type: int
+  server.redirect-downloads:
+    default: False
+    description: |
+      When true, the server will redirect downloads directed at its /v1/patches/{filename}
+      endpoint to the endpoint defined in the server.url-template config option. This is
+      useful if you want patch downloads to be redirected to a fileserver fronting patches.
+      Note: Do not enable this option if the server.url-template is configured as the
+      Livepatch-server as this will result in a redirect loop.
+    type: boolean
 
   cloud-delay.enabled:
     default: false
