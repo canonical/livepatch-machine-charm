@@ -138,14 +138,6 @@ class OperatorMachineCharm(CharmBase):
         else:
             self.set_status_and_log("Livepatch snap already installed...", WaitingStatus)
 
-    def _start(self, event: StartEvent):
-        """Start livepatch server ensuring the related postgres has been migrated (via the snaps schema-tool)."""
-        if self._check_install_and_relations() and self._database_migrated(event):
-            self.set_status_and_log("Starting livepatch daemon...", WaitingStatus)
-            self.get_livepatch_snap.start(["livepatch"])
-            if self.livepatch_running:
-                self.set_status_and_log("Livepatch running!", ActiveStatus)
-
     def _config_changed(self, event: ConfigChangedEvent):
         """Update snap internal configuration, additionally validating the DB is ready each time."""
         required_settings = REQUIRED_SETTINGS.copy()
