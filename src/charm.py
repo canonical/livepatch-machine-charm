@@ -352,32 +352,6 @@ class OperatorMachineCharm(CharmBase):
     ###########
     # UTILITY #
     ###########
-    def _install_snap(self) -> None:
-        """
-        Install the Livepatch Server snap.
-
-        Note:
-        This is pulled from the lib as out of the box in the lib, it just
-        doesn't work...
-        """
-        resource_path = self.model.resources.fetch("livepatch-snap")
-        _cmd = [
-            "snap",
-            "install",
-            resource_path,
-            "--classic",
-            "--dangerous",
-        ]
-        try:
-            logging.info("Attempting to install livepatch snap...")
-            _ = subprocess.check_output(_cmd, universal_newlines=True).splitlines()[0]  # nosec
-
-            if self.get_livepatch_snap.present:
-                logging.info("Snap: %s installed!", self.get_livepatch_snap.name)
-            else:
-                raise SnapError("Could not find livepatch snap, TODO make error better")
-        except subprocess.CalledProcessError as e:
-            raise SnapError(f"Could not install snap {resource_path}: {e.output}") from e
 
     def _database_migrated(self, event: Union[StartEvent, ConfigChangedEvent, UpdateStatusEvent]) -> bool:
         """Start (or restart if the flag is given) the livepatch snap."""
