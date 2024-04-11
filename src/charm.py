@@ -255,6 +255,9 @@ class OperatorMachineCharm(CharmBase):
         """
         logging.info("(postgresql, legacy database relation) MASTER_CHANGED event fired.")
 
+        if not self.model.unit.is_leader():
+            return
+
         if event.database != DATABASE_NAME:
             logging.debug("(legacy database relation) Database setup not complete yet, returning.")
             return
