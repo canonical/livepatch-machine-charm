@@ -13,7 +13,7 @@ import pgsql
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.operator_libs_linux.v2.snap import Snap, SnapCache, SnapError, SnapState
-from ops.charm import CharmBase, ConfigChangedEvent, StartEvent, UpdateStatusEvent
+from ops.charm import CharmBase, ConfigChangedEvent
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 
