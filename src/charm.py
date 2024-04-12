@@ -155,11 +155,7 @@ class OperatorMachineCharm(CharmBase):
         configuration = {**self.config}
 
         # Leader specific configurations
-        if self.unit.is_leader():
-            configuration["server.is-leader"] = True
-        else:
-            configuration["server.is-leader"] = False
-
+        configuration["server.is-leader"] = self.unit.is_leader()
         configuration["database.connection-string"] = self._state.db_uri
 
         # General configuration override logic
