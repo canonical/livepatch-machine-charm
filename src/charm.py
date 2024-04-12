@@ -7,7 +7,7 @@
 """Livepatch machine operator charm."""
 
 import logging
-from typing import Tuple, Union
+from typing import Tuple, Union, Any
 
 import pgsql
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
@@ -137,7 +137,7 @@ class OperatorMachineCharm(CharmBase):
         else:
             self.set_status_and_log("Livepatch snap already installed...", WaitingStatus)
 
-    def _config_changed(self, event: ConfigChangedEvent):
+    def _config_changed(self, event: Union[ConfigChangedEvent, None]):
         """Update snap internal configuration, additionally validating the DB is ready each time."""
         required_settings = REQUIRED_SETTINGS.copy()
 
@@ -185,16 +185,18 @@ class OperatorMachineCharm(CharmBase):
         self.get_livepatch_snap.restart(["livepatch"])
 
         if self.unit.status.message == AWAIT_POSTGRES_RELATION:
-            event.defer()
+            if event is not None:
+                event.defer()
             return
 
         if self.livepatch_running is not True:
             self.set_status_and_log("Livepatch failed to restart.", MaintenanceStatus)
-            event.defer()
+            if event is not None:
+                event.defer()
         else:
             self._update_status(event)
 
-    def _update_status(self, event: UpdateStatusEvent) -> None:
+    def _update_status(self, _: Any) -> None:
         """Perform a simple service health check."""
         logging.info("Updating application status...")
         current_status = self.unit.status
