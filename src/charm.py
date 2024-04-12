@@ -149,7 +149,7 @@ class OperatorMachineCharm(CharmBase):
 
         if not self._check_install_and_relations():
             return
-        if not self._database_migrated(event):
+        if not self._database_migrated():
             return
 
         configuration = {**self.config}
@@ -352,7 +352,7 @@ class OperatorMachineCharm(CharmBase):
     # UTILITY #
     ###########
 
-    def _database_migrated(self, event: Union[StartEvent, ConfigChangedEvent, UpdateStatusEvent]) -> bool:
+    def _database_migrated(self) -> bool:
         """Start (or restart if the flag is given) the livepatch snap."""
         self.set_status_and_log(CHECKING_DB_VERS, WaitingStatus)
         upgrade_required, version = self._check_schema_upgrade_ran()
