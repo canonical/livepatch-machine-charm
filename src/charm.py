@@ -7,7 +7,6 @@
 """Livepatch machine operator charm."""
 
 import logging
-import subprocess  # nosec
 from typing import Tuple, Union
 
 import pgsql
