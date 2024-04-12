@@ -199,7 +199,7 @@ class OperatorMachineCharm(CharmBase):
         if self._check_install_and_relations():
             if self.livepatch_running:
                 self.set_status_and_log("Livepatch running!", ActiveStatus)
-            elif current_status == ActiveStatus:
+            elif isinstance(current_status, ActiveStatus):
                 # If the status has been set elsewhere, don't override that.
                 # We don't defer, as the server is not running for an unexpected reason
                 self.unit.status = MaintenanceStatus("Livepatch is not running.")
