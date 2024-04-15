@@ -13,7 +13,7 @@ import pgsql
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.operator_libs_linux.v2.snap import Snap, SnapCache, SnapError, SnapState
-from ops.charm import CharmBase, ConfigChangedEvent
+from ops.charm import CharmBase, ConfigChangedEvent, RelationEvent
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 
@@ -333,7 +333,7 @@ class OperatorMachineCharm(CharmBase):
         #     self._check_schema_upgrade_required(event)
         self._config_changed(event)
 
-    def _on_website_relation_joined(self, event) -> None:
+    def _on_website_relation_joined(self, event: RelationEvent) -> None:
         server_address: str = self.config.get("server.server-address")
         port = server_address.split(":")[1]
         event.relation.data[self.unit]["port"] = port
