@@ -73,6 +73,7 @@ class TestCharm(unittest.TestCase):
                     "postgres/0",
                     {
                         "database": "livepatch",
+                        # wokeignore:rule=master
                         "master": "host=host port=5432 dbname=livepatch user=username password=password",
                     },
                 )
@@ -123,6 +124,7 @@ class TestCharm(unittest.TestCase):
                     self.harness.charm._state.db_ro_uris, ["postgresql://username:password@standby-host:5432/livepatch"]
                 )
 
+    # wokeignore:rule=master
     def test_legacy_db_relation__both_master_and_standby(self):
         """test legacy db relation handlers' function when both master and standby units are provided."""
         rel_id = self.harness.add_relation("livepatch", "livepatch")
@@ -159,6 +161,7 @@ class TestCharm(unittest.TestCase):
                     "postgres/0",
                     {
                         "database": "livepatch",
+                        # wokeignore:rule=master
                         "master": "host=host port=5432 dbname=livepatch user=username password=password",
                     },
                 )
@@ -170,6 +173,7 @@ class TestCharm(unittest.TestCase):
                     "postgres/0",
                     {
                         "database": "livepatch",
+                        # wokeignore:rule=master
                         "master": "host=host port=5432 dbname=livepatch user=username password=password",
                         "standbys": "host=standby-host port=5432 dbname=livepatch user=username password=password",
                     },
