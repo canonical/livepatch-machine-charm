@@ -37,6 +37,7 @@ class TestCharm(unittest.TestCase):
         snap_cache = {"canonical-livepatch-server": mock}
         return mock, patch("src.charm.SnapCache", return_value=snap_cache)
 
+    # wokeignore:rule=master
     def test_legacy_db_master_changed(self):
         """test `_legacy_db_master_changed event` handler."""
         rel_id = self.harness.add_relation("livepatch", "livepatch")
@@ -126,7 +127,7 @@ class TestCharm(unittest.TestCase):
 
     # wokeignore:rule=master
     def test_legacy_db_relation__both_master_and_standby(self):
-        """test legacy db relation handlers' function when both master and standby units are provided."""
+        """test legacy db relation handlers' function when both primary and standby units are provided."""
         rel_id = self.harness.add_relation("livepatch", "livepatch")
         self.harness.add_relation_unit(rel_id, f"{APP_NAME}/1")
         self.harness.set_leader(True)
