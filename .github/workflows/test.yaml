@@ -6,4 +6,6 @@ on:
 jobs:
   unit-tests:
     uses: canonical/operator-workflows/.github/workflows/test.yaml@8fc8f2188109f96aec61c11e5da5e0c3f61c3cf4
-    secrets: inherit
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
