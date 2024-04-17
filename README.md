@@ -9,7 +9,7 @@
 The Livepatch machine charm is the easiest and the recommended way to deploy Livepatch. This charm installs and configures the Ubuntu Linux Livepatch-ing utility and daemon. Canonical Livepatch patches high and critical linux kernel vulnerabilities, removing the immediate need to reboot to upgrade the kernel,
 instead allowing the downtime to be scheduled. It is a part of the Ubuntu Pro offering.
 
-⚠️ For users who want to deploy an entire Livepatch on-prem server (including its dependencies), it is recommended to use the [bundle](https://charmhub.io/canonical-livepatch-onprem) made for this purpose. For more detailed steps on using the bundle, please see the [tutorials](https://ubuntu.com/security/livepatch/docs/livepatch_on_prem/tutorial) on the Livepatch website.
+⚠️ For users who want to deploy an entire Livepatch on-prem server (including its dependencies), it is recommended to use the `machine/stable` channel of the [bundle](https://charmhub.io/canonical-livepatch-onprem?channel=machine/stable) made for this purpose. For more detailed steps on using the bundle, please see the [tutorials](https://ubuntu.com/security/livepatch/docs/livepatch_on_prem/tutorial) on the Livepatch website.
 
 ## Usage
 
