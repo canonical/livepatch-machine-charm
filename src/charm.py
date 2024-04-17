@@ -7,15 +7,13 @@
 """Livepatch machine operator charm."""
 
 import logging
-import subprocess  # nosec
-from typing import Tuple, Union
+from typing import Tuple, Union, Any
 
 import pgsql
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.operator_libs_linux.v2.snap import Snap, SnapCache, SnapError, SnapState
-from ops.charm import CharmBase, ConfigChangedEvent, StartEvent, UpdateStatusEvent
-from ops.framework import StoredState
+from ops.charm import CharmBase, ConfigChangedEvent, RelationEvent
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 
@@ -28,6 +26,7 @@ from constants.statuses import (
     LIVEPATCH_NOT_INSTALLED_ERROR,
     SUCCESSFUL_INSTALL,
 )
+from state import State
 from util.schema_tool import run_schema_version_check
 
 logger = logging.getLogger(__name__)
@@ -43,8 +42,6 @@ DATABASE_RELATION_LEGACY = "database-legacy"
 
 class OperatorMachineCharm(CharmBase):
     """Livepatch on-premise machine charm."""
-
-    _state: StoredState = StoredState()
 
     @property
     def get_livepatch_snap(self) -> Snap:
@@ -64,7 +61,7 @@ class OperatorMachineCharm(CharmBase):
     def __init__(self, *args) -> None:
         """Init function."""
         super().__init__(*args)
-        self._state.set_default(db_uri=None, db_ro_uris=[])
+        self._state = State(self.app, lambda: self.model.get_relation("livepatch"))
 
         # Setup snapcache
         self.snap_cache = SnapCache()
@@ -140,15 +137,7 @@ class OperatorMachineCharm(CharmBase):
         else:
             self.set_status_and_log("Livepatch snap already installed...", WaitingStatus)
 
-    def _start(self, event: StartEvent):
-        """Start livepatch server ensuring the related postgres has been migrated (via the snaps schema-tool)."""
-        if self._check_install_and_relations() and self._database_migrated(event):
-            self.set_status_and_log("Starting livepatch daemon...", WaitingStatus)
-            self.get_livepatch_snap.start(["livepatch"])
-            if self.livepatch_running:
-                self.set_status_and_log("Livepatch running!", ActiveStatus)
-
-    def _config_changed(self, event: ConfigChangedEvent):
+    def _config_changed(self, event: Union[ConfigChangedEvent, None]):
         """Update snap internal configuration, additionally validating the DB is ready each time."""
         required_settings = REQUIRED_SETTINGS.copy()
 
@@ -160,17 +149,13 @@ class OperatorMachineCharm(CharmBase):
 
         if not self._check_install_and_relations():
             return
-        if not self._database_migrated(event):
+        if not self._database_migrated():
             return
 
         configuration = {**self.config}
 
         # Leader specific configurations
-        if self.unit.is_leader():
-            configuration["server.is-leader"] = True
-        else:
-            configuration["server.is-leader"] = False
-
+        configuration["server.is-leader"] = self.unit.is_leader()
         configuration["database.connection-string"] = self._state.db_uri
 
         # General configuration override logic
@@ -196,23 +181,25 @@ class OperatorMachineCharm(CharmBase):
         self.get_livepatch_snap.restart(["livepatch"])
 
         if self.unit.status.message == AWAIT_POSTGRES_RELATION:
-            event.defer()
+            if event is not None:
+                event.defer()
             return
 
         if self.livepatch_running is not True:
             self.set_status_and_log("Livepatch failed to restart.", MaintenanceStatus)
-            event.defer()
+            if event is not None:
+                event.defer()
         else:
             self._update_status(event)
 
-    def _update_status(self, event: UpdateStatusEvent) -> None:
+    def _update_status(self, _: Any) -> None:
         """Perform a simple service health check."""
         logging.info("Updating application status...")
         current_status = self.unit.status
         if self._check_install_and_relations():
             if self.livepatch_running:
                 self.set_status_and_log("Livepatch running!", ActiveStatus)
-            elif current_status == ActiveStatus:
+            elif isinstance(current_status, ActiveStatus):
                 # If the status has been set elsewhere, don't override that.
                 # We don't defer, as the server is not running for an unexpected reason
                 self.unit.status = MaintenanceStatus("Livepatch is not running.")
@@ -256,6 +243,9 @@ class OperatorMachineCharm(CharmBase):
         The internal snap configuration is updated to reflect this.
         """
         logging.info("(postgresql, legacy database relation) MASTER_CHANGED event fired.")
+
+        if not self.model.unit.is_leader():
+            return
 
         if event.database != DATABASE_NAME:
             logging.debug("(legacy database relation) Database setup not complete yet, returning.")
@@ -343,7 +333,7 @@ class OperatorMachineCharm(CharmBase):
         #     self._check_schema_upgrade_required(event)
         self._config_changed(event)
 
-    def _on_website_relation_joined(self, event) -> None:
+    def _on_website_relation_joined(self, event: RelationEvent) -> None:
         server_address: str = self.config.get("server.server-address")
         port = server_address.split(":")[1]
         event.relation.data[self.unit]["port"] = port
@@ -359,34 +349,8 @@ class OperatorMachineCharm(CharmBase):
     ###########
     # UTILITY #
     ###########
-    def _install_snap(self) -> None:
-        """
-        Install the Livepatch Server snap.
 
-        Note:
-        This is pulled from the lib as out of the box in the lib, it just
-        doesn't work...
-        """
-        resource_path = self.model.resources.fetch("livepatch-snap")
-        _cmd = [
-            "snap",
-            "install",
-            resource_path,
-            "--classic",
-            "--dangerous",
-        ]
-        try:
-            logging.info("Attempting to install livepatch snap...")
-            _ = subprocess.check_output(_cmd, universal_newlines=True).splitlines()[0]  # nosec
-
-            if self.get_livepatch_snap.present:
-                logging.info("Snap: %s installed!", self.get_livepatch_snap.name)
-            else:
-                raise SnapError("Could not find livepatch snap, TODO make error better")
-        except subprocess.CalledProcessError as e:
-            raise SnapError(f"Could not install snap {resource_path}: {e.output}") from e
-
-    def _database_migrated(self, event: Union[StartEvent, ConfigChangedEvent, UpdateStatusEvent]) -> bool:
+    def _database_migrated(self) -> bool:
         """Start (or restart if the flag is given) the livepatch snap."""
         self.set_status_and_log(CHECKING_DB_VERS, WaitingStatus)
         upgrade_required, version = self._check_schema_upgrade_ran()
