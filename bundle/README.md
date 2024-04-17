@@ -1,7 +1,6 @@
 # Livepatch server on-premises bundle
 
 [![CharmHub Badge](https://charmhub.io/canonical-livepatch-onprem/badge.svg)](https://charmhub.io/canonical-livepatch-onprem)
-[![Release](https://github.com/canonical/livepatch-machine-charm/actions/workflows/publish_bundle.yaml/badge.svg)](https://github.com/canonical/livepatch-machine-charm/actions/workflows/publish_bundle.yaml)
 
 This bundle deploys a [Livepatch](https://ubuntu.com/security/livepatch)
 on-prem server for serving patches to machines running Livepatch client.
