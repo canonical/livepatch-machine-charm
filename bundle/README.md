@@ -1,21 +1,19 @@
 # Livepatch server on-premises bundle
 
-This juju bundle deploys a [livepatch](https://ubuntu.com/security/livepatch)
-server for serving patches to machines running livepatch client.
+[![CharmHub Badge](https://charmhub.io/canonical-livepatch-onprem/badge.svg)](https://charmhub.io/canonical-livepatch-onprem)
 
-## Model
+This bundle deploys a [Livepatch](https://ubuntu.com/security/livepatch)
+on-prem server for serving patches to machines running Livepatch client.
 
-The livepatch server on-premises model for machines consists of 4 applications:
- - HAProxy 
- - Livepatch
- - PostgreSQL
- - Ubuntu-advantage (subordinate)
+## Bundled applications
 
+The Livepatch server on-prem model consists of the following applications:
 
-Postgresql stores patch data and machine reports. 
-The HAProxy charm handles providing a reverse-proxy to the server units.
+ - [HAProxy](https://charmhub.io/haproxy) as reverse-proxy/load-balancer.
+ - [Livepatch](https://charmhub.io/canonical-livepatch-server) as the core Livepatch service.
+ - [PostgreSQL](https://charmhub.io/postgresql) as database for patch data and machine reports.
+ - [Ubuntu-advantage (subordinate)](https://charmhub.io/ubuntu-advantage) to enable Ubuntu Pro subscription. 
 
 ## Deployment
 
-For usage on this bundle, please see [here](https://ubuntu.com/security/livepatch/docs/livepatch_on_prem/tutorial/Getting started with Livepatch and LXD)
-
+For more detailed steps on using this bundle, please see the [tutorials](https://ubuntu.com/security/livepatch/docs/livepatch_on_prem/tutorial) on the Livepatch website.
