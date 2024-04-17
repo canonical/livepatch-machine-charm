@@ -42,8 +42,10 @@ def on_schema_upgrade_action(self: OperatorMachineCharm, event: ActionEvent) -> 
                     "schema-version": version,
                 }
             )
-            # As it was successful, we manually run config-changed to speed up
-            # the status changing
-            #
-            # The event type is fine, we nothing StartEvent has been given
-            self._config_changed(event)
+
+            # We can just send a None event to the method, because `event` here
+            # is an action event, and they're not deferrable by definition, and
+            # they raise a runtime exception. We don't want to end up passing
+            # such an event to the `_config_changed` method (where we normally
+            # use `event.defer`).
+            self._config_changed(None)

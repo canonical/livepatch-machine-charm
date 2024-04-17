@@ -32,20 +32,23 @@ def on_enable_action(self: OperatorMachineCharm, event: ActionEvent) -> None:
         fail_action("No token provided.")
         return
 
-    if self.livepatch_installed:
-        # When setting the "token" configuration option, the snap handles
-        # the retrieval of the resource token for us.
-        #
-        # When it fails to do so, token is left unset, letting us know it failed.
-        self.get_livepatch_snap.set({"token": token})
-        retrieved_token = self.get_livepatch_snap.get("token")
+    if not self.livepatch_installed:
+        fail_action("Livepatch snap is not installed.")
+        return
 
-        if len(retrieved_token) == 0:
-            # TODO: This needs improvement, it could've failed due multiple things (network, bad token,
-            # expired token etc.)
-            # How will we surface these kinds of errors through snap configuration? Perhaps this needs refactoring.
-            fail_action("Failed to enable Ubuntu Pro, is your token correct?")
-            return
+    # When setting the "token" configuration option, the snap handles
+    # the retrieval of the resource token for us.
+    #
+    # When it fails to do so, token is left unset, letting us know it failed.
+    self.get_livepatch_snap.set({"token": token})
+    retrieved_token = self.get_livepatch_snap.get("token")
 
-        event.log("Livepatch on-prem enabled.")
-        event.set_results({"enabled": "true"})
+    if len(retrieved_token) == 0:
+        # TODO: This needs improvement, it could've failed due multiple things (network, bad token,
+        # expired token etc.)
+        # How will we surface these kinds of errors through snap configuration? Perhaps this needs refactoring.
+        fail_action("Failed to enable Ubuntu Pro, is your token correct?")
+        return
+
+    event.log("Livepatch on-prem enabled.")
+    event.set_results({"enabled": "true"})
