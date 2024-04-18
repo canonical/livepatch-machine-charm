@@ -178,7 +178,15 @@ class OperatorMachineCharm(CharmBase):
             )
 
         self.set_status_and_log("Restarting livepatch daemon...", WaitingStatus)
-        self.get_livepatch_snap.restart(["livepatch"])
+
+        try:
+            self.get_livepatch_snap.restart(["livepatch"])
+        except SnapError as e:
+            logging.error("error occurred when attempting to restart snap: %s", e)
+            self.set_status_and_log("Livepatch failed to restart.", MaintenanceStatus)
+            if event is not None:
+                event.defer()
+            return
 
         if self.unit.status.message == AWAIT_POSTGRES_RELATION:
             if event is not None:
