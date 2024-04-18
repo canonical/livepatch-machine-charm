@@ -1,0 +1,404 @@
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+#
+# Learn more about config at: https://juju.is/docs/sdk/config
+
+options:
+  server.log-level:
+    default: info
+    description: The servers log level.
+    type: string
+  server.url-template:
+    default: ""
+    description: |
+      Template string to use when making URLs for giving back to the client.
+
+      e.g. https://livepatch-hosting.com/v1/patches/{filename}
+
+      This will need to be configured once the url or ip address of the service
+      is known.
+    type: string
+  server.server-address:
+    default: 0.0.0.0:8080
+    description: The address to bind the server to.
+    type: string
+  server.concurrency-limit:
+    default: 1000
+    description: Maximum number of API requests being served concurrently.
+    type: int
+  server.burst-limit:
+    default: 500
+    description: |
+      The maximum number of concurrently incoming requests.
+
+      After this limit, requests are queued according to the following:
+      concurrency-limit - burst-limit
+
+      For defaults, this is:
+      1000 - 500 = 500 (Maximum queue).
+
+      Once the queue is reached, subsequent requests are rejected.
+    type: int
+  server.redirect-downloads:
+    default: False
+    description: |
+      When true, the server will redirect downloads directed at its /v1/patches/{filename}
+      endpoint to the endpoint defined in the server.url-template config option. This is
+      useful if you want patch downloads to be redirected to a fileserver fronting patches.
+      Note: Do not enable this option if the server.url-template is configured as the
+      Livepatch-server as this will result in a redirect loop.
+    type: boolean
+
+  cloud-delay.enabled:
+    default: false
+    description: |
+      Whether to enable the delayed roll-out of patches based on a client's cloud.
+    type: boolean
+  cloud-delay.default-delay-hours:
+    description: "Default delay hours for clouds/regions/azs without predefined delay hours."
+    type: int
+    default: 0
+  auth.sso.enabled:
+    default: false
+    description: |
+      Note: Currently not available for on-prem users!
+
+      Whether or not OIDCSSO authentication should be enabled.
+    type: boolean
+  auth.sso.teams:
+    default: ""
+    description: |
+      Note: Currently not available for on-prem users!
+
+      A list of comma separated launchpad teams that are allowed access
+      when connecting to the admin tool by OIDCSSO authentication.
+    type: string
+  auth.sso.url:
+    description: |
+      URL to access for SSO auth.
+    type: string
+  auth.sso.public-key:
+    description: Public key for the auth server
+    type: string
+  auth.basic.enabled:
+    default: false
+    description: |
+      Whether basic auth should be used.
+    type: boolean
+  auth.basic.users:
+    description: |
+      A comma separated list of "user:password" pairs used for authentication.
+    type: string
+  contracts.enabled:
+    description: Whether use of the contracts service is enabled.
+    type: boolean
+  contracts.url:
+    default: "https://contracts.canonical.com"
+    description: URL to hit for the contracts service
+    type: string
+  contracts.user:
+    description: Username to authenticate with backend contracts service.
+    type: string
+  contracts.password:
+    description: Password to authenticate with backend contracts service.
+    type: string
+  database.connection-pool-max:
+    default: 10
+    description: The maximum pool of connections to PostgreSQL.
+    type: int
+  database.connection-lifetime-max:
+    default: 10m
+    description: The lifespan of an idle PostgreSQL connection.
+    type: string
+  patch-storage.type:
+    default: filesystem
+    description: |
+      The storage type to be used by the charm, defaults to filesystem.
+      The path can be located under:
+        /var/snap/canonical-livepatch-server/common/patches
+
+      The available options are:
+        - filesystem
+        - swift
+        - postgres
+        - s3
+
+      When using postgres for storage, the charm will work automatically by means of relation.
+      The default database name is under:
+        livepatch
+
+      The database name can be changed but must be created.
+    type: string
+  patch-storage.swift-username:
+    default: ""
+    description: The Swift username to login against when using API key authorisation.
+    type: string
+  patch-storage.swift-api-key:
+    default: ""
+    description: An authorisation API key for swift.
+    type: string
+  patch-storage.swift-auth-url:
+    default: ""
+    description: The authorisation URL for swift.
+    type: string
+  patch-storage.swift-domain:
+    default: ""
+    description: The domain the containers reside under in swift for storing patches.
+    type: string
+  patch-storage.swift-tenant:
+    default: ""
+    description: The tenant account name for your container and API service user to connect under.
+    type: string
+  patch-storage.swift-container:
+    default: ""
+    description: The swift blob storage location for storing patches.
+    type: string
+  patch-storage.swift-region:
+    default: ""
+    description: The region assigned to this domain and tenant.
+    type: string
+  patch-storage.postgres-connection-string:
+    default: ""
+    description: |
+      A connection string URI to a PostgreSQL database for patch storage.
+
+      When set to an empty string, it is handled by relation and uses the same 
+      database cluster that livepatch server uses for state. The database name is 'livepatch'.
+
+      If this is to be changed, it is expected that the database you wish to connect to is 
+      created manually.
+    type: string
+  patch-storage.s3-bucket:
+    default: ""
+    description: The S3 bucket to store patches within.
+    type: string
+  patch-storage.s3-endpoint:
+    default: ""
+    description: The S3 API presigned endpoint.
+    type: string
+  patch-storage.s3-region:
+    default: ""
+    description: The AWS region for this S3 storage.
+    type: string
+  patch-storage.s3-secure:
+    default: false
+    description: Whether or not to perform TLS.
+    type: boolean
+  patch-storage.s3-access-key:
+    default: ""
+    description: AWS programmatic API access key.
+    type: string
+  patch-storage.s3-secret-key:
+    default: ""
+    description: AWS programmatic API secret key.
+    type: string
+  patch-cache.enabled:
+    default: false
+    description: Whether or not to cache patches.
+    type: boolean
+  patch-cache.cache-ttl:
+    default: 10m
+    description: How long to persist a patch in cache whilst it has not been actively retrieved.
+    type: string
+  patch-cache.cache-size:
+    default: 128
+    description: The size of the cache in patches.
+    type: int
+  patch-sync.enabled:
+    default: false
+    description: |
+      Whether or not if this instance of Livepatch Server should sync patches from another instance.
+
+      A sync is effectively a "shared" storage, having access to the same pool of patches as the upstream 
+      services patch storage.
+    type: boolean
+  patch-sync.minimum-kernel-version:
+    description: >-
+      A minimum kernel version of format "0.0.0" denoting the lowest 
+      kernel version to download patches for. When no value is present,
+      all are synced. For example, "5.4.0" will sync "5.4.0" and up.
+    type: string
+    default: ""
+  patch-sync.architectures:
+    description: >-
+      Comma-separated list of architectures to download patches for.
+      When no value is present, all are synced.
+      If this field is empty, the patch sync will gather all architectures.
+    type: string
+    default: ""
+  patch-sync.flavors:
+    default: "generic,lowlatency,aws"
+    description: >
+      A comma separated list of kernel flavors to download patches for.
+      If this field is empty, the patch sync will gather all flavors.
+    type: string
+  patch-sync.interval:
+    default: "1h"
+    description: Period between automatic patch snapshot downloads.
+    type: string
+  patch-sync.machine-count-strategy:
+    default: "bucket"
+    description: The strategy to use when counting machines in a set.
+    type: string
+  patch-sync.send-machine-reports:
+    default: false
+    description: Enable sending reports from local machines during patch synchronisation.
+    type: boolean
+  patch-sync.token:
+    default: ""
+    description: Patch snapshot synchronisation token.
+    type: string
+  patch-sync.upstream-url:
+    default: https://livepatch.canonical.com
+    description: Livepatch server to download patch snapshots from.
+    type: string
+  patch-sync.proxy.enabled:
+    default: false
+    description: Whether or not to proxy patch syncs.
+    type: boolean
+  patch-sync.proxy.http:
+    default: ""
+    description: A comma separated list HTTP proxies to query for patches.
+    type: string
+  patch-sync.proxy.https:
+    default: ""
+    description: A comma separated list HTTPS proxies to query for patches.
+    type: string
+  patch-sync.proxy.no-proxy:
+    default: ""
+    description: A comma separated list of domains, IP CIDRs and/or ports to block.
+    type: string
+  patch-blocklist.enabled:
+    default: false
+    description: Whether or not to enable patch blocklist functionality for the admin tool.
+    type: boolean
+  patch-blocklist.refresh-interval:
+    default: 5m
+    description: How often to check for new blocklist entries.
+    type: string
+  machine-reports.database.enabled:
+    default: false
+    description: Whether or not to enabled machine reports writes to PostgreSQL.
+    type: boolean
+  machine-reports.database.retention-days:
+    default: 10
+    description: A thing used by the charm.
+    type: int
+  machine-reports.database.cleanup-row-limit:
+    default: 1000
+    description: Maximum number of rows to remove with a single report cleanup row.
+    type: int
+  machine-reports.database.cleanup-interval:
+    default: 6h
+    description: Time between report cleanup runs.
+    type: string
+  machine-reports.event-bus.enabled:
+    default: false
+    description: Whether or not to enable machine reports writes to kafka.
+    type: boolean
+  machine-reports.event-bus.brokers:
+    default: ""
+    description: The list of kafka brokers, comma separated to use for pushing reports.
+    type: string
+  machine-reports.event-bus.client-cert:
+    default: ""
+    description: The X509 client certificate to use for mTLS authorisation.
+    type: string
+  machine-reports.event-bus.client-key:
+    default: ""
+    description: The X509 private key associated with the client certificate to use for mTLS authorisation.
+    type: string
+  machine-reports.event-bus.ca-cert:
+    default: ""
+    description: The X509 intermediate or root certificate authority certificate to use for mTLS authorisation.
+    type: string
+  machine-reports.event-bus.kafka-version:
+    default: ""
+    description: |
+      The kafka version you wish to specifically bind to, when not provided, 
+      the kafka version is not validated.
+    type: string
+  kpi-reports.enabled:
+    default: ""
+    description: |
+      Note: Currently not available for on-prem users!
+
+      Key performance index: Metrics. Enables KPI worker - sends metrics to Influx.
+    type: string
+  kpi-reports.interval:
+    default: "5m"
+    description: |
+      Note: Currently not available for on-prem users!
+
+      Specifies KPI worker frequency.
+    type: string
+
+  influx.enabled:
+    description: "Enables influx db support for time series reporting."
+    type: boolean
+  influx.url:
+    # TODO: This should be changed to a relation
+    description: "URL to connect to influx DB"
+    type: string
+  influx.token:
+    description: "Token to use for influx"
+    type: string
+  influx.bucket:
+    description: "Bucket to send data"
+    type: string
+  influx.organization:
+    description: "Organization name"
+    type: string
+
+  profiler.enabled:
+    description: >
+      Whether to enable or disable continuous profiling on the server or not.
+    type: boolean
+    default: false
+  profiler.server-address:
+    description: The pyroscope server address to send the metrics to.
+    type: string
+  profiler.hostname:
+    description: the hostname of the server the profiler is running on. This is used as a tag to group metrics by the server it is running on.
+    type: string
+  profiler.sample-rate:
+    description: sample rate for the profiler in Hz. 100 means reading 100 times per second.
+    type: int
+    default: 100
+  profiler.upload-rate:
+    description: The frequency of upload to the profiling server
+    type: int
+  profiler.mutex-profile-fraction:
+    description: >
+      this turns on mutex profiles with rate indicating the fraction of mutex contention events reported
+      in the mutex profile. On average, 1/rate events are reported. Setting an aggressive rate can hurt performance. ProfileMutexes must be True
+    type: int
+    default: 5
+  profiler.block-profile-rate:
+    description: >
+      this is the sampling average of one blocking event per `BlockProfileRate` nanoseconds spent blocked.
+      For example, set rate to 1000000000 (aka int(time.Second.Nanoseconds())) to record one sample per second a goroutine is blocked.
+      It is recommended to set this to values greater than 10,000. 
+      For more info, visit this: https://github.com/DataDog/go-profiler-notes/blob/main/block.md#benchmarks
+    type: int
+    default: 50000
+  profiler.profile-allocations:
+    description: this will profile the memory for allocated space as well as allocated objects
+    type: boolean
+    default: false
+  profiler.profile-inuse:
+    description: this will profile the overall used memory as well as the memory used by objects
+    type: boolean
+    default: false
+  profiler.profile-mutexes:
+    description: this turns on profiling for mutexes
+    default: false
+    type: boolean
+  profiler.profile-blocks:
+    description: would profile blocking events (channels, select, etc) with the BlockProfileRate frequency.
+    type: boolean
+    default: false
+  profiler.profile-goroutines:
+    description: would profile separate concurrent running gorountines.
+    default: false
+    type: boolean

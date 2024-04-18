@@ -1,0 +1,8 @@
+ops >= 2.0.0
+ops-lib-pgsql
+bcrypt
+# Pinned due to cos-agent lib specifying this requirement see lib/charms/grafana_agent/v0/cos_agent.py PY_DEPS
+pydantic < 2
+cosl
+# Due to https://github.com/go-macaroon-bakery/py-macaroon-bakery/issues/94
+macaroonbakery == 1.3.2
