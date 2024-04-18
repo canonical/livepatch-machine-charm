@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# Copyright 2023 Canonical Ltd.
+# Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 """Livepatch machine charm integration test helpers."""
