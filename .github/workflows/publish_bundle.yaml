@@ -1,6 +1,9 @@
 name: Release Bundle
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 run-name: Release bundle by @${{ github.actor }}
