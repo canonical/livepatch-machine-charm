@@ -33,7 +33,7 @@ async def scale(ops_test: OpsTest, application_name: str, count: int) -> None:
     if change > 0:
         await ops_test.model.applications[application_name].add_units(change)
     elif change < 0:
-        units = [unit.name for unit in ops_test.model.applications[application_name].units[0:abs(change)]]
+        units = [unit.name for unit in ops_test.model.applications[application_name].units[0:-change]]
         await ops_test.model.applications[application_name].destroy_units(*units)
     else:
         return

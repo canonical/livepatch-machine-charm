@@ -8,9 +8,14 @@ import logging
 
 import pytest
 import requests
-
 from integration.conftest import deploy  # noqa: F401, pylint: disable=W0611
-from integration.helpers import APP_NAME, HAPROXY_NAME, get_unit_url, scale, simulate_charm_redeploy
+from integration.helpers import (
+    APP_NAME,
+    HAPROXY_NAME,
+    get_unit_url,
+    scale,
+    simulate_charm_redeploy,
+)
 from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)

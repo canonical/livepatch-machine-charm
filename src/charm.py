@@ -7,7 +7,7 @@
 """Livepatch machine operator charm."""
 
 import logging
-from typing import Tuple, Union, Any
+from typing import Any, Tuple, Union
 
 import pgsql
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
