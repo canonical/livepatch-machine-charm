@@ -1,0 +1,71 @@
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+name: canonical-livepatch-onprem
+summary: Livepatch machine on-prem deployment bundle.
+description: |
+  Livepatch on-prem allows use of canonical-livepatch in network
+  restricted environments and offers tools for fine grained control
+  of the rollout of patches.
+website: https://ubuntu.com/security/livepatch
+issues: https://bugs.launchpad.net/livepatch-onprem
+docs: https://discourse.ubuntu.com/t/ubuntu-livepatch-service/22723
+tags: [security]
+series: jammy
+applications:
+  postgresql:
+    charm: ch:postgresql
+    channel: 14/stable
+    num_units: 1
+    constraints: cpu-cores=1 mem=4G root-disk=50G
+  livepatch:
+    charm: ch:canonical-livepatch-server
+    channel: ops1.x/edge
+    num_units: 1
+    constraints: cpu-cores=1 mem=2G root-disk=50G
+    options:
+      patch-storage.type: postgres
+  haproxy:
+    charm: ch:haproxy
+    num_units: 1
+    constraints: cpu-cores=1 mem=2G root-disk=50G
+    expose: true
+    options:
+      default_timeouts: "queue 60000, connect 5000, client 60000, server 60000"
+      global_default_dh_param: 2048
+      global_maxconn: 4096
+      peering_mode: active-active
+      logrotate_config: |
+        /var/log/haproxy.log {
+            daily
+            rotate 5
+            missingok
+            notifempty
+            compress
+            postrotate
+                invoke-rc.d rsyslog rotate >/dev/null 2>&1 || true
+            endscript
+        }
+      services: |
+        - service_name: livepatch
+          service_host: "0.0.0.0"
+          service_port: 80
+          service_options:
+            - balance leastconn
+            - cookie SRVNAME insert
+            - 'acl restricted_api path_beg,url_dec -i /api/auth-tokens'
+            - http-request deny if restricted_api
+          server_options: maxconn 200 cookie S{i} check
+  ubuntu-advantage:
+    charm: ch:ubuntu-advantage
+    options:
+      ppa: ppa:ua-client/stable
+relations:
+  - ["livepatch:database", "postgresql:database"]
+  - ["livepatch:website", "haproxy"]
+  # Token required for Livepatch to setup
+  - ["livepatch", "ubuntu-advantage"]
+  # Enable pro for ESM etc.
+  - ["haproxy", "ubuntu-advantage"]
+  # Enable pro for ESM etc.
+  - ["postgresql", "ubuntu-advantage"]
