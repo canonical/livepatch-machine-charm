@@ -206,8 +206,9 @@ class OperatorMachineCharm(CharmBase):
             self.set_status_and_log("Livepatch failed to restart.", MaintenanceStatus)
             if event is not None:
                 event.defer()
-        else:
-            self._update_status(event)
+            return
+
+        self._update_status(event)
 
     def _update_status(self, _: Any) -> None:
         """Perform a simple service health check."""
