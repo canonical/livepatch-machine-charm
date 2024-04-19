@@ -1,7 +1,0 @@
-{
-    "python.analysis.extraPaths": [
-        "/home/babakks/canonical/livepatch-machine-charm/lib",
-        "/home/babakks/canonical/livepatch-machine-charm/src",
-        "/home/babakks/canonical/livepatch-machine-charm/tests"
-    ]
-}
