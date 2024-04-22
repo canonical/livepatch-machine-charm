@@ -121,6 +121,7 @@ class TestState(TestCase):
 
 class Stateful:
     """Test class with an _state property"""
+
     def __init__(self, state_ready: bool, is_leader: bool) -> None:
         self._state = make_state({}, ready=state_ready)
         self.unit = MockUnit(is_leader)
@@ -138,6 +139,7 @@ class Stateful:
 
 class MockEvent:
     """A mock event"""
+
     defer_called = False
 
     def defer(self):
@@ -147,6 +149,7 @@ class MockEvent:
 
 class MockUnit:
     """A mock unit"""
+
     is_leader_called = False
 
     def __init__(self, is_leader: bool) -> None:

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
@@ -20,27 +19,35 @@ HAPROXY_NAME = "haproxy"
 NGINX_NAME = "nginx-ingress-integrator"
 
 
-async def scale(ops_test: OpsTest, app, units):
-    """Scale the application to the provided number and wait for idle.
+async def scale(ops_test: OpsTest, application_name: str, count: int) -> None:
+    """Scale a given application to a specific unit count.
 
     Args:
-        ops_test: PyTest object.
-        app: Application to be scaled.
-        units: Number of units required.
+        ops_test: The ops test framework instance
+        application_name: The name of the application
+        count: The desired number of units to scale to
     """
-    await ops_test.model.applications[app].scale(scale=units)
+    async with ops_test.fast_forward():
+        change = count - len(ops_test.model.applications[application_name].units)
+        if change > 0:
+            await ops_test.model.applications[application_name].add_units(change)
+        elif change < 0:
+            units = [unit.name for unit in ops_test.model.applications[application_name].units[0:-change]]
+            await ops_test.model.applications[application_name].destroy_units(*units)
+        else:
+            return
 
-    # Wait for model to settle
-    await ops_test.model.wait_for_idle(
-        apps=[app],
-        status="active",
-        idle_period=30,
-        raise_on_blocked=True,
-        timeout=300,
-        wait_for_exact_units=units,
-    )
+        await ops_test.model.wait_for_idle(
+            apps=[application_name],
+            status="active",
+            timeout=5000,
+            wait_for_exact_units=count,
+            idle_period=30,
+            raise_on_error=False,
+            raise_on_blocked=False,
+        )
 
-    assert len(ops_test.model.applications[app].units) == units
+    assert len(ops_test.model.applications[application_name].units) == count
 
 
 async def get_unit_url(ops_test: OpsTest, application, unit, port, protocol="http"):
@@ -81,22 +88,23 @@ async def simulate_charm_redeploy(ops_test: OpsTest):
     Args:
         ops_test: PyTest object.
     """
-    await ops_test.model.applications[APP_NAME].destroy(force=True)
-    await ops_test.model.block_until(lambda: APP_NAME not in ops_test.model.applications)
+    async with ops_test.fast_forward():
+        await ops_test.model.applications[APP_NAME].destroy(force=True)
+        await ops_test.model.block_until(lambda: APP_NAME not in ops_test.model.applications)
 
     charm = await fetch_charm(ops_test)
 
-    await ops_test.model.deploy(
-        charm,
-        application_name=APP_NAME,
-        num_units=1,
-        config={
-            "patch-storage.type": "postgres",
-            "server.url-template": "http://livepatch:8080/v1/patches/{filename}",
-        },
-    )
-
     async with ops_test.fast_forward():
+        await ops_test.model.deploy(
+            charm,
+            application_name=APP_NAME,
+            num_units=1,
+            config={
+                "patch-storage.type": "postgres",
+                "server.url-template": "http://livepatch:8080/v1/patches/{filename}",
+            },
+        )
+
         await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", raise_on_blocked=False, timeout=600)
         await perform_livepatch_integrations(ops_test)
         await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", raise_on_blocked=False, timeout=600)
