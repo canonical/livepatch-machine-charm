@@ -5,6 +5,7 @@
 """Charm integration tests."""
 
 import logging
+from urllib.parse import urljoin
 
 import pytest
 import requests
@@ -30,8 +31,8 @@ class TestDeployment:
         self, ops_test: OpsTest, protocol: str, application: str, unit: int, port: int, path: str = ""
     ):
         """Call given HTTP endpoint and assert if the call was successful (HTTP 200)"""
-        u = await get_unit_url(ops_test, protocol=protocol, application=application, unit=unit, port=port)
-        u += ("/" + path) if path else ""
+        unit_url = await get_unit_url(ops_test, protocol=protocol, application=application, unit=unit, port=port)
+        u = urljoin(unit_url, path)
         logger.info("curling app address: %s", u)
         response = requests.get(u, timeout=300, verify=False)  # nosec
         assert response.status_code == 200
