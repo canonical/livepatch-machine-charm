@@ -1,6 +1,11 @@
 name: Publish to edge
 
 on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "bundle/**"
   workflow_dispatch:
 
 jobs:
