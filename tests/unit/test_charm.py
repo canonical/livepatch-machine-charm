@@ -3,13 +3,13 @@
 #
 # Learn more about testing at: https://juju.is/docs/sdk/testing
 """Unit tests module."""
-from typing import List
 import unittest
-from unittest.mock import patch, Mock
-import yaml
+from typing import List
+from unittest.mock import Mock, patch
 
+import yaml
 from ops.model import StatusBase
-from ops.testing import Harness, ActionFailed
+from ops.testing import ActionFailed, Harness
 
 from src.charm import OperatorMachineCharm
 

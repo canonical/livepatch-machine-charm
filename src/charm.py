@@ -7,7 +7,7 @@
 """Livepatch machine operator charm."""
 
 import logging
-from typing import Tuple, Union, Any
+from typing import Any, Tuple, Union
 
 import pgsql
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
@@ -137,16 +137,25 @@ class OperatorMachineCharm(CharmBase):
         else:
             self.set_status_and_log("Livepatch snap already installed...", WaitingStatus)
 
-    def _config_changed(self, event: Union[ConfigChangedEvent, None]):
-        """Update snap internal configuration, additionally validating the DB is ready each time."""
-        required_settings = REQUIRED_SETTINGS.copy()
+    def _check_required_config_assigned(self) -> bool:
+        """
+        Check required configuration parameters are assigned.
 
+        This will set the status as blocked if any of the required parameters
+        were not set.
+        """
+        required_settings = REQUIRED_SETTINGS.copy()
         for setting, error_msg in required_settings.items():
             if self.config.get(setting) in (None, ""):
                 self.set_status_and_log(error_msg, BlockedStatus)
                 logger.warning(error_msg)
-                return
+                return False
+        return True
 
+    def _config_changed(self, event: Union[ConfigChangedEvent, None]):
+        """Update snap internal configuration, additionally validating the DB is ready each time."""
+        if not self._check_required_config_assigned():
+            return
         if not self._check_install_and_relations():
             return
         if not self._database_migrated():
@@ -178,7 +187,15 @@ class OperatorMachineCharm(CharmBase):
             )
 
         self.set_status_and_log("Restarting livepatch daemon...", WaitingStatus)
-        self.get_livepatch_snap.restart(["livepatch"])
+
+        try:
+            self.get_livepatch_snap.restart(["livepatch"])
+        except SnapError as e:
+            logging.error("error occurred when attempting to restart snap: %s", e)
+            self.set_status_and_log("Livepatch failed to restart.", MaintenanceStatus)
+            if event is not None:
+                event.defer()
+            return
 
         if self.unit.status.message == AWAIT_POSTGRES_RELATION:
             if event is not None:
@@ -189,8 +206,9 @@ class OperatorMachineCharm(CharmBase):
             self.set_status_and_log("Livepatch failed to restart.", MaintenanceStatus)
             if event is not None:
                 event.defer()
-        else:
-            self._update_status(event)
+            return
+
+        self._update_status(event)
 
     def _update_status(self, _: Any) -> None:
         """Perform a simple service health check."""

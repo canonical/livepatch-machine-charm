@@ -44,29 +44,30 @@ async def deploy(ops_test: OpsTest):
     """Deploy the charm."""
     charm = await fetch_charm(ops_test)
     jammy = "ubuntu@22.04"
-    asyncio.gather(
-        ops_test.model.deploy(
-            charm,
-            application_name=APP_NAME,
-            num_units=1,
-            config={"patch-storage.type": "postgres"},
-            base=jammy,
-        ),
-        ops_test.model.deploy(
-            POSTGRES_NAME,
-            channel="14/stable",
-            num_units=1,
-            base=jammy,
-        ),
-        ops_test.model.deploy(
-            HAPROXY_NAME,
-            num_units=1,
-            config={},
-            base=jammy,
-        ),
-    )
 
     async with ops_test.fast_forward():
+        asyncio.gather(
+            ops_test.model.deploy(
+                charm,
+                application_name=APP_NAME,
+                num_units=1,
+                config={"patch-storage.type": "postgres"},
+                base=jammy,
+            ),
+            ops_test.model.deploy(
+                POSTGRES_NAME,
+                channel="14/stable",
+                num_units=1,
+                base=jammy,
+            ),
+            ops_test.model.deploy(
+                HAPROXY_NAME,
+                num_units=1,
+                config={},
+                base=jammy,
+            ),
+        )
+
         # wait for deployment to be done
         LOGGER.info("Waiting for Postgresql")
         await ops_test.model.wait_for_idle(apps=[POSTGRES_NAME], status="active", raise_on_blocked=False, timeout=600)
