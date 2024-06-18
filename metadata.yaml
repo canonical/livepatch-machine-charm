@@ -13,8 +13,10 @@ description: |
   machines running on your infrastructure.
 maintainers:
   - Canonical Commercial Systems Team <jaas-crew@lists.canonical.com>
-website: https://ubuntu.com/security/livepatch
-docs: https://discourse.ubuntu.com/t/ubuntu-livepatch-service/22723
+website:
+  - https://ubuntu.com/security/livepatch
+  - https://discourse.ubuntu.com/t/ubuntu-livepatch-service/22723
+docs: https://discourse.charmhub.io/t/14446
 issues: https://bugs.launchpad.net/livepatch-onprem
 source: https://github.com/canonical/livepatch-machine-charm
 
