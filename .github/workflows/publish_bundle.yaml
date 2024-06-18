@@ -16,12 +16,11 @@ jobs:
     steps:
       - name: checkout code
         uses: actions/checkout@v4
-      # Note the use of the upload-charm action. Bundles can be treated as charms.
       - name: Upload Bundle
-        uses: canonical/charming-actions/upload-charm@main
+        uses: canonical/charming-actions/upload-bundle@main
         with:
             credentials: "${{ secrets.CHARMCRAFT_AUTH }}"
-            charm-path: ./bundle
+            bundle-path: ./bundle
             github-token: "${{ secrets.GITHUB_TOKEN }}"
             channel: "machine/edge"
             tag-prefix: "bundle"
