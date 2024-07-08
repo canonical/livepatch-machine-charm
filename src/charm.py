@@ -7,6 +7,8 @@
 """Livepatch machine operator charm."""
 
 import logging
+import subprocess  # nosec
+from base64 import b64decode
 from typing import Any, Tuple, Union
 
 import pgsql
@@ -38,6 +40,7 @@ REQUIRED_SETTINGS = {
 DATABASE_NAME = "livepatch"
 DATABASE_RELATION = "database"
 DATABASE_RELATION_LEGACY = "database-legacy"
+TRUSTED_CA_FILENAME = "/usr/local/share/ca-certificates/trusted-contracts.ca.crt"
 
 
 class OperatorMachineCharm(CharmBase):
@@ -161,6 +164,8 @@ class OperatorMachineCharm(CharmBase):
         if not self._database_migrated():
             return
 
+        self._update_trusted_ca_certs()
+
         configuration = {**self.config}
 
         # Leader specific configurations
@@ -227,6 +232,24 @@ class OperatorMachineCharm(CharmBase):
                     current_status.name,
                     current_status.message,
                 )
+
+    def _update_trusted_ca_certs(self):
+        """Update trusted CA certificates with the cert from configuration."""
+        if not self.config.get("contracts.ca"):
+            logging.debug("ca config not set")
+            return
+
+        cert = b64decode(self.config.get("contracts.ca")).decode("utf8")
+        cert_hash = hash(cert)
+        if self._state.contract_cert_hash and cert_hash == self._state.contract_cert_hash:
+            return
+
+        with open(TRUSTED_CA_FILENAME, "wt") as f:
+            f.write(cert)
+        self._state.contract_cert_hash = cert_hash
+        result = subprocess.check_output(["update-ca-certificates", "--fresh"], stderr=subprocess.STDOUT)  # nosec
+        logger.info("output update-ca-certificates: %s", result)
+        return
 
     # Legacy database
 
