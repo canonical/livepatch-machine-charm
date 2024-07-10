@@ -34,6 +34,10 @@ requires:
   database:
     interface: postgresql_client
     limit: 1 # Most charms only handle a single PostgreSQL Application.
+  pro-airgapped-server:
+    interface: livepatch-pro-airgapped-server
+    limit: 1
+    optional: true
 
 provides:
   website:
