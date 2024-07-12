@@ -102,6 +102,13 @@ options:
   contracts.password:
     description: Password to authenticate with backend contracts service.
     type: string
+  contracts.ca:
+    description: |
+      A certificate of the CA that issued the certificate of the contracts service.
+      Use 'include-base64://' in a bundle to include a certificate. Otherwise,
+      pass a base64-encoded certificate (base64 of "-----BEGIN" to "-----END").
+    type: string
+    default: ""
   database.connection-pool-max:
     default: 10
     description: The maximum pool of connections to PostgreSQL.

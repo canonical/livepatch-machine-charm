@@ -3,6 +3,8 @@
 #
 # Learn more about testing at: https://juju.is/docs/sdk/testing
 """Unit tests module."""
+import os
+import tempfile
 import unittest
 from typing import List
 from unittest.mock import Mock, patch
@@ -11,7 +13,7 @@ import yaml
 from ops.model import StatusBase
 from ops.testing import ActionFailed, Harness
 
-from src.charm import OperatorMachineCharm
+import src.charm
 
 APP_NAME = "canonical-livepatch-server"
 
@@ -21,7 +23,7 @@ class TestCharm(unittest.TestCase):
     """Unit tests class."""
 
     def setUp(self):
-        self.harness = Harness(OperatorMachineCharm)
+        self.harness = Harness(src.charm.OperatorMachineCharm)
         self.addCleanup(self.harness.cleanup)
         self.harness.disable_hooks()
 
@@ -390,6 +392,8 @@ class TestCharm(unittest.TestCase):
                 return "\n"
             if cmd[0] == "leader-get":
                 return b""
+            if cmd[0] == "update-ca-certificates":
+                return b"updated-ca-certs"
             raise AssertionError("unexpected call")
 
         subprocess_check_output_mock = Mock(side_effect=subprocess_check_output_side_effect)
@@ -818,3 +822,13 @@ class TestCharm(unittest.TestCase):
             self.assertEqual(
                 ex.exception.message, "Failed to parse users list. Please provide users as: users=user:pass,user:pass"
             )
+
+    def test_custom_ca(self):
+        """test setting a custom CA for the contracts server"""
+
+        self.start_leader_unit()
+        with tempfile.NamedTemporaryFile() as tmpfile:
+            with patch.object(src.charm, "TRUSTED_CA_FILENAME", tmpfile.name):
+                self.harness.update_config({"contracts.ca": "dGVzdA=="})
+            self.assertTrue(os.path.exists(tmpfile.name))
+            self.assertEqual(tmpfile.read().decode(), "test")
