@@ -62,6 +62,7 @@ class OperatorMachineCharm(CharmBase):
         """Init function."""
         super().__init__(*args)
         self._state = State(self.app, lambda: self.model.get_relation("livepatch"))
+        self.framework.observe(self.on.livepatch_relation_changed, self._on_livepatch_relation_changed)
 
         # Setup snapcache
         self.snap_cache = SnapCache()
@@ -123,6 +124,11 @@ class OperatorMachineCharm(CharmBase):
     ###################
     # LIFECYCLE HOOKS #
     ###################
+
+    def _on_livepatch_relation_changed(self, event) -> None:
+        """Handle peer `relation-changed` event."""
+        self._config_changed(event)
+
     def _install(self, _):
         """Install livepatch snap."""
         self.set_status_and_log(INSTALLING, WaitingStatus)
