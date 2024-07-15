@@ -315,6 +315,154 @@ class TestCharm(unittest.TestCase):
         # this is perceived as an incomplete integration.
         self.assertIsNone(self.harness.charm._state.db_uri)
 
+    def test_pro_airgapped_server_relation__success(self):
+        """Test pro-airgapped-server relation."""
+        rel_id = self.harness.add_relation("livepatch", "livepatch")
+        self.harness.add_relation_unit(rel_id, f"{APP_NAME}/1")
+        self.harness.set_leader(True)
+        self.harness.enable_hooks()
+
+        pro_rel_id = self.harness.add_relation("pro-airgapped-server", "pro-airgapped-server")
+        self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/0")
+
+        self.assertIsNone(self.harness.charm._state.pro_airgapped_address)
+
+        self.harness.update_relation_data(
+            pro_rel_id,
+            "pro-airgapped-server/0",
+            {
+                "scheme": "scheme",
+                "hostname": "some.host.name",
+                "port": "9999",
+            },
+        )
+
+        self.assertEqual(
+            self.harness.charm._state.pro_airgapped_address,
+            "scheme://some.host.name:9999",
+        )
+
+    def test_pro_airgapped_server_relation__multiple_units(self):
+        """Test pro-airgapped-server relation when there are multiple units."""
+        rel_id = self.harness.add_relation("livepatch", "livepatch")
+        self.harness.add_relation_unit(rel_id, f"{APP_NAME}/1")
+        self.harness.set_leader(True)
+        self.harness.enable_hooks()
+
+        pro_rel_id = self.harness.add_relation("pro-airgapped-server", "pro-airgapped-server")
+        self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/0")
+        self.harness.update_relation_data(
+            pro_rel_id,
+            "pro-airgapped-server/0",
+            {
+                "scheme": "http",
+                "hostname": "first.host.name",
+            },
+        )
+
+        self.assertEqual(
+            self.harness.charm._state.pro_airgapped_address,
+            "http://first.host.name",
+        )
+
+        # Add another pro-airgapped-server unit.
+        self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/1")
+        self.harness.update_relation_data(
+            pro_rel_id,
+            "pro-airgapped-server/1",
+            {
+                "scheme": "http",
+                "hostname": "second.host.name",
+            },
+        )
+
+        # Since the first address is still available, the state should not change.
+        self.assertEqual(
+            self.harness.charm._state.pro_airgapped_address,
+            "http://first.host.name",
+        )
+
+    def test_pro_airgapped_server_relation__multiple_units_one_departs(self):
+        """Test pro-airgapped-server relation when one of the relation units departs but the other one not."""
+        rel_id = self.harness.add_relation("livepatch", "livepatch")
+        self.harness.add_relation_unit(rel_id, f"{APP_NAME}/1")
+        self.harness.set_leader(True)
+        self.harness.enable_hooks()
+
+        pro_rel_id = self.harness.add_relation("pro-airgapped-server", "pro-airgapped-server")
+        self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/0")
+        self.harness.update_relation_data(
+            pro_rel_id,
+            "pro-airgapped-server/0",
+            {
+                "scheme": "http",
+                "hostname": "first.host.name",
+            },
+        )
+
+        self.assertEqual(
+            self.harness.charm._state.pro_airgapped_address,
+            "http://first.host.name",
+        )
+
+        # Add another pro-airgapped-server unit.
+        self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/1")
+        self.harness.update_relation_data(
+            pro_rel_id,
+            "pro-airgapped-server/1",
+            {
+                "scheme": "http",
+                "hostname": "second.host.name",
+            },
+        )
+
+        # Since the first address is still available, the state should not change.
+        self.assertEqual(
+            self.harness.charm._state.pro_airgapped_address,
+            "http://first.host.name",
+        )
+
+        # Remove the first unit, and now the state should change to the the only existing unit address.
+        self.harness.remove_relation_unit(pro_rel_id, "pro-airgapped-server/0")
+        self.assertEqual(
+            self.harness.charm._state.pro_airgapped_address,
+            "http://second.host.name",
+        )
+
+    def test_pro_airgapped_server_relation__multiple_units_all_depart(self):
+        """Test pro-airgapped-server relation when one of the relation units departs but the other one not."""
+        rel_id = self.harness.add_relation("livepatch", "livepatch")
+        self.harness.add_relation_unit(rel_id, f"{APP_NAME}/1")
+        self.harness.set_leader(True)
+        self.harness.enable_hooks()
+
+        pro_rel_id = self.harness.add_relation("pro-airgapped-server", "pro-airgapped-server")
+        self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/0")
+        self.harness.update_relation_data(
+            pro_rel_id,
+            "pro-airgapped-server/0",
+            {
+                "scheme": "http",
+                "hostname": "first.host.name",
+            },
+        )
+        self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/1")
+        self.harness.update_relation_data(
+            pro_rel_id,
+            "pro-airgapped-server/1",
+            {
+                "scheme": "http",
+                "hostname": "second.host.name",
+            },
+        )
+
+        self.assertIn(
+            self.harness.charm._state.pro_airgapped_address, ["http://first.host.name", "http://second.host.name"]
+        )
+
+        self.harness.remove_relation(pro_rel_id)
+        self.assertIsNone(self.harness.charm._state.pro_airgapped_address)
+
     def test_install(self):
         """test install event handler."""
 
@@ -377,7 +525,7 @@ class TestCharm(unittest.TestCase):
 
         self.assertEqual(self.harness.model.unit.status.message, "Livepatch snap already installed...")
 
-    def start_leader_unit(self):
+    def start_leader_unit(self, relate_to_pro_airgapped_server: bool = False):
         """starts leader unit by doing a full configuration/integration."""
 
         self.snap_mock.present = True
@@ -414,6 +562,19 @@ class TestCharm(unittest.TestCase):
                 "endpoints": "some.database.host,some.other.database.host",
             },
         )
+
+        if relate_to_pro_airgapped_server:
+            pro_rel_id = self.harness.add_relation("pro-airgapped-server", "pro-airgapped-server")
+            self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/0")
+            self.harness.update_relation_data(
+                pro_rel_id,
+                "pro-airgapped-server/0",
+                {
+                    "scheme": "scheme",
+                    "hostname": "some.host.name",
+                    "port": "9999",
+                },
+            )
 
         def set_snap_as_running(*args, **kwargs):
             self.snap_mock.services = {"livepatch": {"active": True}}
@@ -466,6 +627,15 @@ class TestCharm(unittest.TestCase):
     def test_start(self):
         """test successfully running livepatch."""
         self.start_leader_unit()
+
+    def test_start_with_pro_airgapped_server_relation(self):
+        """Test the service starts with pro-airgapped-server relation."""
+        self.start_leader_unit(relate_to_pro_airgapped_server=True)
+
+        self.assertEqual(
+            self.harness.charm._state.pro_airgapped_address,
+            "scheme://some.host.name:9999",
+        )
 
     def test_enable_action__success(self):
         """test `enable` action."""
