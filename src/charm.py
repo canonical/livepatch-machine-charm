@@ -7,15 +7,16 @@
 """Livepatch machine operator charm."""
 
 import logging
-from typing import Any, Tuple, Union
+from typing import Any, Set, Tuple, Union
+from urllib.parse import urlunparse, ParseResult
 
 import pgsql
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.operator_libs_linux.v2.snap import Snap, SnapCache, SnapError, SnapState
-from ops.charm import CharmBase, ConfigChangedEvent, RelationEvent
+from ops.charm import CharmBase, ConfigChangedEvent, RelationEvent, RelationChangedEvent, RelationDepartedEvent
 from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation, RelationDataContent, WaitingStatus
 
 from constants.errors import SCHEMA_VERSION_CHECK_ERROR
 from constants.snap import SERVER_SNAP_NAME, SERVER_SNAP_REVISION
@@ -96,6 +97,14 @@ class OperatorMachineCharm(CharmBase):
             self._on_database_event,
         )
 
+        # Air-gapped pro/contracts
+        self.framework.observe(
+            self.on.pro_airgapped_server_relation_changed, self._on_pro_airgapped_server_relation_changed
+        )
+        self.framework.observe(
+            self.on.pro_airgapped_server_relation_departed, self._on_pro_airgapped_server_relation_departed
+        )
+
         # Actions
         self.framework.observe(self.on.enable_action, self.on_enable_action)
         self.framework.observe(self.on.schema_upgrade_action, self.on_schema_upgrade_action)
@@ -160,11 +169,10 @@ class OperatorMachineCharm(CharmBase):
 
     def _config_changed(self, event: Union[ConfigChangedEvent, None]):
         """Update snap internal configuration, additionally validating the DB is ready each time."""
-        if not self._check_required_config_assigned():
-            return
-        if not self._check_install_and_relations():
-            return
-        if not self._database_migrated():
+        can_continue = (
+            self._check_required_config_assigned() and self._check_install_and_relations() and self._database_migrated()
+        )
+        if not can_continue:
             return
 
         configuration = {**self.config}
@@ -178,9 +186,15 @@ class OperatorMachineCharm(CharmBase):
         if len(self.config.get(pg_conn_str_conf)) == 0:
             configuration["patch-storage.postgres-connection-string"] = self._state.db_uri
 
-        if self.config.get("patch-sync.enabled") == "True":
+        if self.config.get("patch-sync.enabled") is True:
             # TODO: Test this alex
             configuration["patch-sync.id"] = self.model.uuid
+
+        if self._state.pro_airgapped_address:
+            configuration["contracts.enabled"] = True
+            configuration["contracts.url"] = self._state.pro_airgapped_address
+            configuration.pop("contracts.user", None)
+            configuration.pop("contracts.password", None)
 
         try:
             prefixed_configuration = {f"lp.{key}": val for key, val in configuration.items()}
@@ -361,6 +375,100 @@ class OperatorMachineCharm(CharmBase):
         server_address: str = self.config.get("server.server-address")
         port = server_address.split(":")[1]
         event.relation.data[self.unit]["port"] = port
+
+    def _on_pro_airgapped_server_relation_changed(self, event: RelationChangedEvent):
+        """Handle pro-airgapped-server relation-changed event."""
+        if not self.model.unit.is_leader():
+            return
+        if not event.unit:
+            return
+        data = event.relation.data.get(event.unit, None)
+        if not data:
+            return
+
+        if not self._state.is_ready():
+            event.defer()
+            return
+
+        available_addresses = self._get_available_pro_airgapped_server_addresses(event.relation)
+        if len(available_addresses) == 0:
+            logger.error("expected at least one pro-airgapped-server address, but so far none provided by the relation")
+            return
+
+        logger.debug("found %d available addresses for pro-airgapped-server", len(available_addresses))
+
+        # Only change the address already stored in the state, if the old one is
+        # None or no longer available. This is to avoid unnecessary service restarts.
+        current_address = self._state.pro_airgapped_address
+        if not current_address or current_address not in available_addresses:
+            address = available_addresses.pop()
+            logger.info("changing pro-airgapped-server address to %s", address)
+            self._state.pro_airgapped_address = address
+            self._config_changed(event)
+
+    def _on_pro_airgapped_server_relation_departed(self, event: RelationDepartedEvent):
+        """Handle pro-airgapped-server relation-departed event."""
+        if not self.model.unit.is_leader():
+            return
+        if not self._state.is_ready():
+            event.defer()
+            return
+
+        if len(event.relation.units) == 0:
+            # There is no pro-airgapped-server unit related to this charm, so we should opt out
+            # of using airgapped contracts.
+            logger.warning("falling back to default behavior since all pro-airgapped-server units quit the relation")
+            del self._state.pro_airgapped_address
+            self._config_changed(event)
+            return
+
+        # There might be other units of the pro-airgapped-server in the relation, so we should
+        # use the URL from them. Note that this is a very rare scenario, because the airgapped
+        # contracts service is usually deployed with one unit. But we nevertheless we have to
+        # handle this scenario.
+        available_addresses = self._get_available_pro_airgapped_server_addresses(event.relation)
+        if len(available_addresses) > 0:
+            current_address = self._state.pro_airgapped_address
+            if current_address not in available_addresses:
+                address = available_addresses.pop()
+                logger.info("changing pro-airgapped-server address to %s", address)
+                self._state.pro_airgapped_address = address
+                self._config_changed(event)
+            return
+
+        # We couldn't find a valid address to the pro-airgapped-server, so we have to fallback to default.
+        logger.warning("falling back to default behavior since no valid address to pro-airgapped-server is available")
+        del self._state.pro_airgapped_address
+        self._config_changed(event)
+
+    def _get_available_pro_airgapped_server_addresses(self, relation: Relation) -> Set[str]:
+        """Return available pro-airgapped-server addresses taken from related unit databags."""
+        available_addresses: Set[str] = set()
+        for u in relation.units:
+            data = relation.data.get(u, None)
+            if not data:
+                continue
+            address = self._extract_pro_airgapped_server_address(data)
+            if not address:
+                continue
+            available_addresses.add(address)
+        return available_addresses
+
+    def _extract_pro_airgapped_server_address(self, data: RelationDataContent) -> Union[str, None]:
+        """
+        Extract pro-airgapped-server address from given unit databag.
+
+        The method returns None, if data structure is not valid.
+        """
+        hostname = data.get("hostname")
+        if not hostname:
+            logger.error("empty 'hostname' value in pro-airgapped relation data")
+            return None
+
+        scheme = data.get("scheme") or "http"
+        port = data.get("port")
+        netloc = hostname + (f":{port}" if port else "")
+        return urlunparse(ParseResult(scheme, netloc, "", "", "", ""))
 
     ###########
     # ACTIONS #
