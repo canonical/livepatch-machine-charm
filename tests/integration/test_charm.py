@@ -136,5 +136,4 @@ class TestDeployment:
             )
 
         status = await self.assert_ha_proxy_healthy(ops_test, unit=0)
-        logger.error("/debug/status: %s",json.dumps(status))
         assert status["contracts"]["status"] == "OK"
