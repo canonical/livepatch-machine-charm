@@ -4,8 +4,8 @@
 
 """Charm integration tests."""
 
-import logging
 import json
+import logging
 from urllib.parse import urljoin
 
 import pytest
