@@ -467,7 +467,6 @@ class TestCharm(unittest.TestCase):
 
     def test_install(self):
         """test install event handler."""
-
         self.snap_mock.present = False
         self.snap_mock.services = {"livepatch": {"active": False}}
         self.snap_mock.ensure.return_value = None
@@ -499,7 +498,6 @@ class TestCharm(unittest.TestCase):
 
     def test_install__already_installed(self):
         """test install event handler, when the livepatch snap is already installed."""
-
         self.snap_mock.present = True
         self.snap_mock.services = {"livepatch": {"active": False}}
         self.snap_mock.set.return_value = None
@@ -529,7 +527,6 @@ class TestCharm(unittest.TestCase):
 
     def start_leader_unit(self, relate_to_pro_airgapped_server: bool = False):
         """starts leader unit by doing a full configuration/integration."""
-
         self.snap_mock.present = True
         self.snap_mock.services = {"livepatch": {"active": False}}
         self.snap_mock.set.return_value = None
@@ -643,7 +640,6 @@ class TestCharm(unittest.TestCase):
 
     def test_enable_action__success(self):
         """test `enable` action."""
-
         self.start_leader_unit()
         self.snap_mock.get.return_value = "some-token"
 
@@ -655,7 +651,6 @@ class TestCharm(unittest.TestCase):
 
     def test_enable_action__empty_token(self):
         """test `enable` action when provided token is empty."""
-
         self.start_leader_unit()
 
         with self.assertRaises(ActionFailed) as ex:
@@ -665,7 +660,6 @@ class TestCharm(unittest.TestCase):
 
     def test_enable_action__empty_retrieved_token(self):
         """test `enable` action when provided token cannot be set in the snap's configuration."""
-
         self.start_leader_unit()
         self.snap_mock.get.return_value = ""  # retrieved token
 
@@ -676,7 +670,6 @@ class TestCharm(unittest.TestCase):
 
     def test_enable_action__snap_not_installed(self):
         """test `enable` action when livepatch snap is not installed."""
-
         self.snap_mock.present = False
 
         with self.assertRaises(ActionFailed) as ex:
@@ -686,7 +679,6 @@ class TestCharm(unittest.TestCase):
 
     def test_restart_action__success(self):
         """test `restart` action."""
-
         self.start_leader_unit()
         self.snap_mock.services = {"livepatch": {"active": False}}  # mark service as stopped
 
@@ -702,7 +694,6 @@ class TestCharm(unittest.TestCase):
 
     def test_restart_action__failed_restart(self):
         """test `restart` action when service is not running after restart."""
-
         self.start_leader_unit()
         self.snap_mock.services = {"livepatch": {"active": False}}  # mark service as stopped
         self.snap_mock.restart = Mock(return_value=None)
@@ -715,7 +706,6 @@ class TestCharm(unittest.TestCase):
 
     def test_restart_action__snap_not_installed(self):
         """test `restart` action when snap is not installed."""
-
         self.start_leader_unit()
         self.snap_mock.present = False
 
@@ -728,7 +718,6 @@ class TestCharm(unittest.TestCase):
 
     def test_schema_upgrade_action__success(self):
         """test `schema-upgrade` action."""
-
         self.snap_mock.present = True
         self.snap_mock.services = {"livepatch": {"active": False}}
         self.snap_mock.set.return_value = None
@@ -792,7 +781,6 @@ class TestCharm(unittest.TestCase):
 
     def test_schema_upgrade_action__failed(self):
         """test `schema-upgrade` action failure."""
-
         self.snap_mock.present = True
         self.snap_mock.services = {"livepatch": {"active": False}}
         self.snap_mock.set.return_value = None
@@ -851,7 +839,6 @@ class TestCharm(unittest.TestCase):
 
     def test_set_basic_users_action__success(self):
         """test `set-basic-users` action."""
-
         self.start_leader_unit()
 
         self.snap_mock.set = Mock(return_value=None)
@@ -901,7 +888,6 @@ class TestCharm(unittest.TestCase):
 
     def test_set_basic_users_action__repeated_user(self):
         """test `set-basic-users` action when an existing user is re-added."""
-
         self.start_leader_unit()
 
         self.snap_mock.set = Mock(return_value=None)
@@ -943,7 +929,6 @@ class TestCharm(unittest.TestCase):
 
     def test_set_basic_users_action__long_password(self):
         """test `set-basic-users` action when password is longer than allowed."""
-
         self.start_leader_unit()
 
         self.snap_mock.set = Mock(return_value=None)
@@ -966,9 +951,7 @@ class TestCharm(unittest.TestCase):
 
     def test_set_basic_users_action__invalid_arg(self):
         """test `set-basic-users` action when argument is not valid."""
-
         self.start_leader_unit()
-
         with self.subTest("users: none"):
             with self.assertRaises(ActionFailed) as ex:
                 self.harness.run_action("set-basic-users", {"users": None})
@@ -995,7 +978,6 @@ class TestCharm(unittest.TestCase):
 
     def test_custom_ca(self):
         """test setting a custom CA for the contracts server"""
-
         self.start_leader_unit()
         with tempfile.NamedTemporaryFile() as tmpfile:
             with patch.object(src.charm, "TRUSTED_CA_FILENAME", tmpfile.name):
