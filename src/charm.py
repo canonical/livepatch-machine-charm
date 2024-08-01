@@ -6,19 +6,32 @@
 
 """Livepatch machine operator charm."""
 
-from base64 import b64decode
 import logging
 import subprocess  # nosec
+from base64 import b64decode
 from typing import Any, Set, Tuple, Union
-from urllib.parse import urlunparse, ParseResult
+from urllib.parse import ParseResult, urlunparse
 
 import pgsql
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.operator_libs_linux.v2.snap import Snap, SnapCache, SnapError, SnapState
-from ops.charm import CharmBase, ConfigChangedEvent, RelationEvent, RelationChangedEvent, RelationDepartedEvent
+from ops.charm import (
+    CharmBase,
+    ConfigChangedEvent,
+    RelationChangedEvent,
+    RelationDepartedEvent,
+    RelationEvent,
+)
 from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation, RelationDataContent, WaitingStatus
+from ops.model import (
+    ActiveStatus,
+    BlockedStatus,
+    MaintenanceStatus,
+    Relation,
+    RelationDataContent,
+    WaitingStatus,
+)
 
 from constants.errors import SCHEMA_VERSION_CHECK_ERROR
 from constants.snap import SERVER_SNAP_NAME, SERVER_SNAP_REVISION
