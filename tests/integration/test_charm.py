@@ -115,7 +115,7 @@ class TestDeployment:
                 PRO_AIRGAPPED_SERVER_NAME,
                 num_units=1,
                 config={
-                    # Since we don't have a dummy yet valid Pro token, we use the following
+                    # Since we don't have a fake yet valid Pro token, we use the following
                     # override mechanism to bypass the validation step. The token and the
                     # override are taken from happy-path tests of the underlying project.
                     "pro-token": "C14LZCAxz36w6Nh5EQDuD6cmNKtwWn",
