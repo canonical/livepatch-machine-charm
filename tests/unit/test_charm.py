@@ -6,7 +6,7 @@
 import os
 import tempfile
 import unittest
-from typing import List
+from typing import Any, Dict, List
 from unittest.mock import Mock, patch
 
 import yaml
@@ -319,16 +319,22 @@ class TestCharm(unittest.TestCase):
 
     def test_pro_airgapped_server_relation__success(self):
         """Test pro-airgapped-server relation."""
-        rel_id = self.harness.add_relation("livepatch", "livepatch")
-        self.harness.add_relation_unit(rel_id, f"{APP_NAME}/1")
-        self.harness.set_leader(True)
-        self.harness.enable_hooks()
+        self.start_leader_unit()
 
+        def snap_set_mock(prefixed_configuration: Dict[str, Any]):
+            self.assertDictContainsSubset(
+                {
+                    "lp.contracts.enabled": True,
+                    "lp.contracts.url": "scheme://some.host.name:9999",
+                },
+                prefixed_configuration,
+            )
+            self.assertNotIn("lp.contracts.user", prefixed_configuration)
+            self.assertNotIn("lp.contracts.password", prefixed_configuration)
+
+        self.snap_mock.set = Mock(side_effect=snap_set_mock)
         pro_rel_id = self.harness.add_relation("pro-airgapped-server", "pro-airgapped-server")
         self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/0")
-
-        self.assertIsNone(self.harness.charm._state.pro_airgapped_address)
-
         self.harness.update_relation_data(
             pro_rel_id,
             "pro-airgapped-server/0",
@@ -338,105 +344,110 @@ class TestCharm(unittest.TestCase):
                 "port": "9999",
             },
         )
-
-        self.assertEqual(
-            self.harness.charm._state.pro_airgapped_address,
-            "scheme://some.host.name:9999",
-        )
+        self.assertTrue(self.snap_mock.set.called)
 
     def test_pro_airgapped_server_relation__multiple_units(self):
         """Test pro-airgapped-server relation when there are multiple units."""
-        rel_id = self.harness.add_relation("livepatch", "livepatch")
-        self.harness.add_relation_unit(rel_id, f"{APP_NAME}/1")
-        self.harness.set_leader(True)
-        self.harness.enable_hooks()
+        self.start_leader_unit()
 
+        def update_snap_set_mock(expected_enabled: bool, expected_url: str):
+            def snap_set_mock(prefixed_configuration: Dict[str, Any]):
+                self.assertDictContainsSubset(
+                    {
+                        "lp.contracts.enabled": expected_enabled,
+                        "lp.contracts.url": expected_url,
+                    },
+                    prefixed_configuration,
+                )
+                self.assertNotIn("lp.contracts.user", prefixed_configuration)
+                self.assertNotIn("lp.contracts.password", prefixed_configuration)
+
+            self.snap_mock.set = Mock(side_effect=snap_set_mock)
+
+        update_snap_set_mock(True, "scheme://first.host:9999")
         pro_rel_id = self.harness.add_relation("pro-airgapped-server", "pro-airgapped-server")
         self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/0")
         self.harness.update_relation_data(
             pro_rel_id,
             "pro-airgapped-server/0",
             {
-                "scheme": "http",
-                "hostname": "first.host.name",
+                "scheme": "scheme",
+                "hostname": "first.host",
+                "port": "9999",
             },
         )
+        self.assertTrue(self.snap_mock.set.called)
 
-        self.assertEqual(
-            self.harness.charm._state.pro_airgapped_address,
-            "http://first.host.name",
-        )
-
-        # Add another pro-airgapped-server unit.
+        # Adding another unit of `pro-airgapped-server`, but this new unit should not
+        # affect the Livepatch server configuration.
+        update_snap_set_mock(True, "scheme://first.host:9999")
         self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/1")
         self.harness.update_relation_data(
             pro_rel_id,
             "pro-airgapped-server/1",
             {
-                "scheme": "http",
-                "hostname": "second.host.name",
+                "scheme": "scheme",
+                "hostname": "second.host",
+                "port": "9999",
             },
         )
-
-        # Since the first address is still available, the state should not change.
-        self.assertEqual(
-            self.harness.charm._state.pro_airgapped_address,
-            "http://first.host.name",
-        )
+        self.assertTrue(self.snap_mock.set.called)
 
     def test_pro_airgapped_server_relation__multiple_units_one_departs(self):
         """Test pro-airgapped-server relation when one of the relation units departs but the other one not."""
-        rel_id = self.harness.add_relation("livepatch", "livepatch")
-        self.harness.add_relation_unit(rel_id, f"{APP_NAME}/1")
-        self.harness.set_leader(True)
-        self.harness.enable_hooks()
+        self.start_leader_unit()
 
+        def update_snap_set_mock(expected_enabled: bool, expected_url: str):
+            def snap_set_mock(prefixed_configuration: Dict[str, Any]):
+                self.assertDictContainsSubset(
+                    {
+                        "lp.contracts.enabled": expected_enabled,
+                        "lp.contracts.url": expected_url,
+                    },
+                    prefixed_configuration,
+                )
+                self.assertNotIn("lp.contracts.user", prefixed_configuration)
+                self.assertNotIn("lp.contracts.password", prefixed_configuration)
+
+            self.snap_mock.set = Mock(side_effect=snap_set_mock)
+
+        update_snap_set_mock(True, "scheme://first.host:9999")
         pro_rel_id = self.harness.add_relation("pro-airgapped-server", "pro-airgapped-server")
         self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/0")
         self.harness.update_relation_data(
             pro_rel_id,
             "pro-airgapped-server/0",
             {
-                "scheme": "http",
-                "hostname": "first.host.name",
+                "scheme": "scheme",
+                "hostname": "first.host",
+                "port": "9999",
             },
         )
+        self.assertTrue(self.snap_mock.set.called)
 
-        self.assertEqual(
-            self.harness.charm._state.pro_airgapped_address,
-            "http://first.host.name",
-        )
-
-        # Add another pro-airgapped-server unit.
+        # Make sure adding another unit doesn't change the last contracts URL.
+        update_snap_set_mock(True, "scheme://first.host:9999")
         self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/1")
         self.harness.update_relation_data(
             pro_rel_id,
             "pro-airgapped-server/1",
             {
-                "scheme": "http",
-                "hostname": "second.host.name",
+                "scheme": "scheme",
+                "hostname": "second.host",
+                "port": "9999",
             },
         )
+        self.assertTrue(self.snap_mock.set.called)
 
-        # Since the first address is still available, the state should not change.
-        self.assertEqual(
-            self.harness.charm._state.pro_airgapped_address,
-            "http://first.host.name",
-        )
-
-        # Remove the first unit, and now the state should change to the the only existing unit address.
+        # Now we drop remove the first `pro-airgapped-server` unit. The charm should
+        # use the second unit address.
+        update_snap_set_mock(True, "scheme://second.host:9999")
         self.harness.remove_relation_unit(pro_rel_id, "pro-airgapped-server/0")
-        self.assertEqual(
-            self.harness.charm._state.pro_airgapped_address,
-            "http://second.host.name",
-        )
+        self.assertTrue(self.snap_mock.set.called)
 
-    def test_pro_airgapped_server_relation__multiple_units_all_depart(self):
-        """Test pro-airgapped-server relation when one of the relation units departs but the other one not."""
-        rel_id = self.harness.add_relation("livepatch", "livepatch")
-        self.harness.add_relation_unit(rel_id, f"{APP_NAME}/1")
-        self.harness.set_leader(True)
-        self.harness.enable_hooks()
+    def test_pro_airgapped_server_relation__relation_removed(self):
+        """Test when pro-airgapped-server is removed."""
+        self.start_leader_unit()
 
         pro_rel_id = self.harness.add_relation("pro-airgapped-server", "pro-airgapped-server")
         self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/0")
@@ -444,26 +455,24 @@ class TestCharm(unittest.TestCase):
             pro_rel_id,
             "pro-airgapped-server/0",
             {
-                "scheme": "http",
-                "hostname": "first.host.name",
-            },
-        )
-        self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/1")
-        self.harness.update_relation_data(
-            pro_rel_id,
-            "pro-airgapped-server/1",
-            {
-                "scheme": "http",
-                "hostname": "second.host.name",
+                "scheme": "scheme",
+                "hostname": "first.host",
+                "port": "9999",
             },
         )
 
-        self.assertIn(
-            self.harness.charm._state.pro_airgapped_address, ["http://first.host.name", "http://second.host.name"]
-        )
+        # Now we remove the relation. The charm should disable use of contracts.
+        def snap_set_mock(prefixed_configuration: Dict[str, Any]):
+            self.assertDictContainsSubset(
+                {
+                    "lp.contracts.enabled": False,
+                },
+                prefixed_configuration,
+            )
 
+        self.snap_mock.set = Mock(side_effect=snap_set_mock)
         self.harness.remove_relation(pro_rel_id)
-        self.assertIsNone(self.harness.charm._state.pro_airgapped_address)
+        self.assertTrue(self.snap_mock.set.called)
 
     def test_install(self):
         """test install event handler."""
@@ -525,7 +534,7 @@ class TestCharm(unittest.TestCase):
 
         self.assertEqual(self.harness.model.unit.status.message, "Livepatch snap already installed...")
 
-    def start_leader_unit(self, relate_to_pro_airgapped_server: bool = False):
+    def start_leader_unit(self):
         """starts leader unit by doing a full configuration/integration."""
         self.snap_mock.present = True
         self.snap_mock.services = {"livepatch": {"active": False}}
@@ -563,19 +572,6 @@ class TestCharm(unittest.TestCase):
                 "endpoints": "some.database.host,some.other.database.host",
             },
         )
-
-        if relate_to_pro_airgapped_server:
-            pro_rel_id = self.harness.add_relation("pro-airgapped-server", "pro-airgapped-server")
-            self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/0")
-            self.harness.update_relation_data(
-                pro_rel_id,
-                "pro-airgapped-server/0",
-                {
-                    "scheme": "scheme",
-                    "hostname": "some.host.name",
-                    "port": "9999",
-                },
-            )
 
         def set_snap_as_running(*args, **kwargs):
             self.snap_mock.services = {"livepatch": {"active": True}}
@@ -628,15 +624,6 @@ class TestCharm(unittest.TestCase):
     def test_start(self):
         """test successfully running livepatch."""
         self.start_leader_unit()
-
-    def test_start_with_pro_airgapped_server_relation(self):
-        """Test the service starts with pro-airgapped-server relation."""
-        self.start_leader_unit(relate_to_pro_airgapped_server=True)
-
-        self.assertEqual(
-            self.harness.charm._state.pro_airgapped_address,
-            "scheme://some.host.name:9999",
-        )
 
     def test_enable_action__success(self):
         """test `enable` action."""
