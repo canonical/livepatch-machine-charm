@@ -9,7 +9,7 @@
 import logging
 import subprocess  # nosec
 from base64 import b64decode
-from typing import Any, Set, Tuple, Union
+from typing import Any, Tuple, Union
 from urllib.parse import ParseResult, urlunparse
 
 import pgsql
@@ -54,6 +54,7 @@ REQUIRED_SETTINGS = {
 DATABASE_NAME = "livepatch"
 DATABASE_RELATION = "database"
 DATABASE_RELATION_LEGACY = "database-legacy"
+PRO_AIRGAPPED_SERVER_RELATION = "pro-airgapped-server"
 TRUSTED_CA_FILENAME = "/usr/local/share/ca-certificates/trusted-contracts.ca.crt"
 
 
@@ -208,11 +209,15 @@ class OperatorMachineCharm(CharmBase):
             # TODO: Test this alex
             configuration["patch-sync.id"] = self.model.uuid
 
-        if self._state.pro_airgapped_address:
-            configuration["contracts.enabled"] = True
-            configuration["contracts.url"] = self._state.pro_airgapped_address
-            configuration.pop("contracts.user", None)
-            configuration.pop("contracts.password", None)
+        # Getting the pro-airgapped-server relation data.
+        pro_relations = self.model.relations.get(PRO_AIRGAPPED_SERVER_RELATION, None)
+        if pro_relations and len(pro_relations):
+            address = self._get_available_pro_airgapped_server_address(pro_relations[0])
+            if address:
+                configuration["contracts.enabled"] = True
+                configuration["contracts.url"] = address
+                configuration.pop("contracts.user", None)
+                configuration.pop("contracts.password", None)
 
         try:
             prefixed_configuration = {f"lp.{key}": val for key, val in configuration.items()}
@@ -414,81 +419,28 @@ class OperatorMachineCharm(CharmBase):
 
     def _on_pro_airgapped_server_relation_changed(self, event: RelationChangedEvent):
         """Handle pro-airgapped-server relation-changed event."""
-        if not self.model.unit.is_leader():
-            return
-        if not event.unit:
-            return
-        data = event.relation.data.get(event.unit, None)
-        if not data:
-            return
-
-        if not self._state.is_ready():
-            event.defer()
-            return
-
-        available_addresses = self._get_available_pro_airgapped_server_addresses(event.relation)
-        if len(available_addresses) == 0:
-            logger.error("expected at least one pro-airgapped-server address, but so far none provided by the relation")
-            return
-
-        logger.debug("found %d available addresses for pro-airgapped-server", len(available_addresses))
-
-        # Only change the address already stored in the state, if the old one is
-        # None or no longer available. This is to avoid unnecessary service restarts.
-        current_address = self._state.pro_airgapped_address
-        if not current_address or current_address not in available_addresses:
-            address = available_addresses.pop()
-            logger.info("changing pro-airgapped-server address to %s", address)
-            self._state.pro_airgapped_address = address
-            self._config_changed(event)
+        self._config_changed(event)
 
     def _on_pro_airgapped_server_relation_departed(self, event: RelationDepartedEvent):
         """Handle pro-airgapped-server relation-departed event."""
-        if not self.model.unit.is_leader():
-            return
-        if not self._state.is_ready():
-            event.defer()
-            return
-
-        if len(event.relation.units) == 0:
-            # There is no pro-airgapped-server unit related to this charm, so we should opt out
-            # of using airgapped contracts.
-            logger.warning("falling back to default behavior since all pro-airgapped-server units quit the relation")
-            del self._state.pro_airgapped_address
-            self._config_changed(event)
-            return
-
-        # There might be other units of the pro-airgapped-server in the relation, so we should
-        # use the URL from them. Note that this is a very rare scenario, because the airgapped
-        # contracts service is usually deployed with one unit. But we nevertheless we have to
-        # handle this scenario.
-        available_addresses = self._get_available_pro_airgapped_server_addresses(event.relation)
-        if len(available_addresses) > 0:
-            current_address = self._state.pro_airgapped_address
-            if current_address not in available_addresses:
-                address = available_addresses.pop()
-                logger.info("changing pro-airgapped-server address to %s", address)
-                self._state.pro_airgapped_address = address
-                self._config_changed(event)
-            return
-
-        # We couldn't find a valid address to the pro-airgapped-server, so we have to fallback to default.
-        logger.warning("falling back to default behavior since no valid address to pro-airgapped-server is available")
-        del self._state.pro_airgapped_address
         self._config_changed(event)
 
-    def _get_available_pro_airgapped_server_addresses(self, relation: Relation) -> Set[str]:
-        """Return available pro-airgapped-server addresses taken from related unit databags."""
-        available_addresses: Set[str] = set()
-        for u in relation.units:
-            data = relation.data.get(u, None)
+    def _get_available_pro_airgapped_server_address(self, relation: Relation) -> Union[str, None]:
+        """
+        Return the pro-airgapped-server address, if any, taken from related unit databags.
+
+        The returned value will be the same for all units. This is achieved by iterating over
+        a sorted list of available units.
+        """
+        sorted_units = sorted(relation.units, key=lambda unit: unit.name)
+        for unit in sorted_units:
+            data = relation.data.get(unit, None)
             if not data:
                 continue
             address = self._extract_pro_airgapped_server_address(data)
-            if not address:
-                continue
-            available_addresses.add(address)
-        return available_addresses
+            if address:
+                return address
+        return None
 
     def _extract_pro_airgapped_server_address(self, data: RelationDataContent) -> Union[str, None]:
         """
