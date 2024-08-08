@@ -6,7 +6,7 @@
 import os
 import tempfile
 import unittest
-from typing import List
+from typing import Any, Dict, List
 from unittest.mock import Mock, patch
 
 import yaml
@@ -317,9 +317,165 @@ class TestCharm(unittest.TestCase):
         # this is perceived as an incomplete integration.
         self.assertIsNone(self.harness.charm._state.db_uri)
 
+    def test_pro_airgapped_server_relation__success(self):
+        """Test pro-airgapped-server relation."""
+        self.start_leader_unit()
+
+        def snap_set_mock(prefixed_configuration: Dict[str, Any]):
+            self.assertDictContainsSubset(
+                {
+                    "lp.contracts.enabled": True,
+                    "lp.contracts.url": "scheme://some.host.name:9999",
+                },
+                prefixed_configuration,
+            )
+            self.assertNotIn("lp.contracts.user", prefixed_configuration)
+            self.assertNotIn("lp.contracts.password", prefixed_configuration)
+
+        self.snap_mock.set = Mock(side_effect=snap_set_mock)
+        pro_rel_id = self.harness.add_relation("pro-airgapped-server", "pro-airgapped-server")
+        self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/0")
+        self.harness.update_relation_data(
+            pro_rel_id,
+            "pro-airgapped-server/0",
+            {
+                "scheme": "scheme",
+                "hostname": "some.host.name",
+                "port": "9999",
+            },
+        )
+        self.assertTrue(self.snap_mock.set.called)
+
+    def test_pro_airgapped_server_relation__multiple_units(self):
+        """Test pro-airgapped-server relation when there are multiple units."""
+        self.start_leader_unit()
+
+        def update_snap_set_mock(expected_enabled: bool, expected_url: str):
+            def snap_set_mock(prefixed_configuration: Dict[str, Any]):
+                self.assertDictContainsSubset(
+                    {
+                        "lp.contracts.enabled": expected_enabled,
+                        "lp.contracts.url": expected_url,
+                    },
+                    prefixed_configuration,
+                )
+                self.assertNotIn("lp.contracts.user", prefixed_configuration)
+                self.assertNotIn("lp.contracts.password", prefixed_configuration)
+
+            self.snap_mock.set = Mock(side_effect=snap_set_mock)
+
+        update_snap_set_mock(True, "scheme://first.host:9999")
+        pro_rel_id = self.harness.add_relation("pro-airgapped-server", "pro-airgapped-server")
+        self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/0")
+        self.harness.update_relation_data(
+            pro_rel_id,
+            "pro-airgapped-server/0",
+            {
+                "scheme": "scheme",
+                "hostname": "first.host",
+                "port": "9999",
+            },
+        )
+        self.assertTrue(self.snap_mock.set.called)
+
+        # Adding another unit of `pro-airgapped-server`, but this new unit should not
+        # affect the Livepatch server configuration.
+        update_snap_set_mock(True, "scheme://first.host:9999")
+        self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/1")
+        self.harness.update_relation_data(
+            pro_rel_id,
+            "pro-airgapped-server/1",
+            {
+                "scheme": "scheme",
+                "hostname": "second.host",
+                "port": "9999",
+            },
+        )
+        self.assertTrue(self.snap_mock.set.called)
+
+    def test_pro_airgapped_server_relation__multiple_units_one_departs(self):
+        """Test pro-airgapped-server relation when one of the relation units departs but the other one not."""
+        self.start_leader_unit()
+
+        def update_snap_set_mock(expected_enabled: bool, expected_url: str):
+            def snap_set_mock(prefixed_configuration: Dict[str, Any]):
+                self.assertDictContainsSubset(
+                    {
+                        "lp.contracts.enabled": expected_enabled,
+                        "lp.contracts.url": expected_url,
+                    },
+                    prefixed_configuration,
+                )
+                self.assertNotIn("lp.contracts.user", prefixed_configuration)
+                self.assertNotIn("lp.contracts.password", prefixed_configuration)
+
+            self.snap_mock.set = Mock(side_effect=snap_set_mock)
+
+        update_snap_set_mock(True, "scheme://first.host:9999")
+        pro_rel_id = self.harness.add_relation("pro-airgapped-server", "pro-airgapped-server")
+        self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/0")
+        self.harness.update_relation_data(
+            pro_rel_id,
+            "pro-airgapped-server/0",
+            {
+                "scheme": "scheme",
+                "hostname": "first.host",
+                "port": "9999",
+            },
+        )
+        self.assertTrue(self.snap_mock.set.called)
+
+        # Make sure adding another unit doesn't change the last contracts URL.
+        update_snap_set_mock(True, "scheme://first.host:9999")
+        self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/1")
+        self.harness.update_relation_data(
+            pro_rel_id,
+            "pro-airgapped-server/1",
+            {
+                "scheme": "scheme",
+                "hostname": "second.host",
+                "port": "9999",
+            },
+        )
+        self.assertTrue(self.snap_mock.set.called)
+
+        # Now we drop remove the first `pro-airgapped-server` unit. The charm should
+        # use the second unit address.
+        update_snap_set_mock(True, "scheme://second.host:9999")
+        self.harness.remove_relation_unit(pro_rel_id, "pro-airgapped-server/0")
+        self.assertTrue(self.snap_mock.set.called)
+
+    def test_pro_airgapped_server_relation__relation_removed(self):
+        """Test when pro-airgapped-server is removed."""
+        self.start_leader_unit()
+
+        pro_rel_id = self.harness.add_relation("pro-airgapped-server", "pro-airgapped-server")
+        self.harness.add_relation_unit(pro_rel_id, "pro-airgapped-server/0")
+        self.harness.update_relation_data(
+            pro_rel_id,
+            "pro-airgapped-server/0",
+            {
+                "scheme": "scheme",
+                "hostname": "first.host",
+                "port": "9999",
+            },
+        )
+
+        # Now we remove the relation. The charm should disable use of contracts.
+        def snap_set_mock(prefixed_configuration: Dict[str, Any]):
+            self.assertDictContainsSubset(
+                {
+                    "lp.contracts.enabled": False,
+                },
+                prefixed_configuration,
+            )
+
+        self.snap_mock.set = Mock(side_effect=snap_set_mock)
+        self.harness.remove_relation(pro_rel_id)
+        self.assertTrue(self.snap_mock.set.called)
+
     def test_install(self):
         """test install event handler."""
-
         self.snap_mock.present = False
         self.snap_mock.services = {"livepatch": {"active": False}}
         self.snap_mock.ensure.return_value = None
@@ -351,7 +507,6 @@ class TestCharm(unittest.TestCase):
 
     def test_install__already_installed(self):
         """test install event handler, when the livepatch snap is already installed."""
-
         self.snap_mock.present = True
         self.snap_mock.services = {"livepatch": {"active": False}}
         self.snap_mock.set.return_value = None
@@ -381,7 +536,6 @@ class TestCharm(unittest.TestCase):
 
     def start_leader_unit(self):
         """starts leader unit by doing a full configuration/integration."""
-
         self.snap_mock.present = True
         self.snap_mock.services = {"livepatch": {"active": False}}
         self.snap_mock.set.return_value = None
@@ -473,7 +627,6 @@ class TestCharm(unittest.TestCase):
 
     def test_enable_action__success(self):
         """test `enable` action."""
-
         self.start_leader_unit()
         self.snap_mock.get.return_value = "some-token"
 
@@ -485,7 +638,6 @@ class TestCharm(unittest.TestCase):
 
     def test_enable_action__empty_token(self):
         """test `enable` action when provided token is empty."""
-
         self.start_leader_unit()
 
         with self.assertRaises(ActionFailed) as ex:
@@ -495,7 +647,6 @@ class TestCharm(unittest.TestCase):
 
     def test_enable_action__empty_retrieved_token(self):
         """test `enable` action when provided token cannot be set in the snap's configuration."""
-
         self.start_leader_unit()
         self.snap_mock.get.return_value = ""  # retrieved token
 
@@ -506,7 +657,6 @@ class TestCharm(unittest.TestCase):
 
     def test_enable_action__snap_not_installed(self):
         """test `enable` action when livepatch snap is not installed."""
-
         self.snap_mock.present = False
 
         with self.assertRaises(ActionFailed) as ex:
@@ -516,7 +666,6 @@ class TestCharm(unittest.TestCase):
 
     def test_restart_action__success(self):
         """test `restart` action."""
-
         self.start_leader_unit()
         self.snap_mock.services = {"livepatch": {"active": False}}  # mark service as stopped
 
@@ -532,7 +681,6 @@ class TestCharm(unittest.TestCase):
 
     def test_restart_action__failed_restart(self):
         """test `restart` action when service is not running after restart."""
-
         self.start_leader_unit()
         self.snap_mock.services = {"livepatch": {"active": False}}  # mark service as stopped
         self.snap_mock.restart = Mock(return_value=None)
@@ -545,7 +693,6 @@ class TestCharm(unittest.TestCase):
 
     def test_restart_action__snap_not_installed(self):
         """test `restart` action when snap is not installed."""
-
         self.start_leader_unit()
         self.snap_mock.present = False
 
@@ -558,7 +705,6 @@ class TestCharm(unittest.TestCase):
 
     def test_schema_upgrade_action__success(self):
         """test `schema-upgrade` action."""
-
         self.snap_mock.present = True
         self.snap_mock.services = {"livepatch": {"active": False}}
         self.snap_mock.set.return_value = None
@@ -622,7 +768,6 @@ class TestCharm(unittest.TestCase):
 
     def test_schema_upgrade_action__failed(self):
         """test `schema-upgrade` action failure."""
-
         self.snap_mock.present = True
         self.snap_mock.services = {"livepatch": {"active": False}}
         self.snap_mock.set.return_value = None
@@ -681,7 +826,6 @@ class TestCharm(unittest.TestCase):
 
     def test_set_basic_users_action__success(self):
         """test `set-basic-users` action."""
-
         self.start_leader_unit()
 
         self.snap_mock.set = Mock(return_value=None)
@@ -731,7 +875,6 @@ class TestCharm(unittest.TestCase):
 
     def test_set_basic_users_action__repeated_user(self):
         """test `set-basic-users` action when an existing user is re-added."""
-
         self.start_leader_unit()
 
         self.snap_mock.set = Mock(return_value=None)
@@ -773,7 +916,6 @@ class TestCharm(unittest.TestCase):
 
     def test_set_basic_users_action__long_password(self):
         """test `set-basic-users` action when password is longer than allowed."""
-
         self.start_leader_unit()
 
         self.snap_mock.set = Mock(return_value=None)
@@ -796,9 +938,7 @@ class TestCharm(unittest.TestCase):
 
     def test_set_basic_users_action__invalid_arg(self):
         """test `set-basic-users` action when argument is not valid."""
-
         self.start_leader_unit()
-
         with self.subTest("users: none"):
             with self.assertRaises(ActionFailed) as ex:
                 self.harness.run_action("set-basic-users", {"users": None})
@@ -825,7 +965,6 @@ class TestCharm(unittest.TestCase):
 
     def test_custom_ca(self):
         """test setting a custom CA for the contracts server"""
-
         self.start_leader_unit()
         with tempfile.NamedTemporaryFile() as tmpfile:
             with patch.object(src.charm, "TRUSTED_CA_FILENAME", tmpfile.name):

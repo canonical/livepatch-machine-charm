@@ -10,14 +10,28 @@ import logging
 import subprocess  # nosec
 from base64 import b64decode
 from typing import Any, Tuple, Union
+from urllib.parse import ParseResult, urlunparse
 
 import pgsql
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.operator_libs_linux.v2.snap import Snap, SnapCache, SnapError, SnapState
-from ops.charm import CharmBase, ConfigChangedEvent, RelationEvent
+from ops.charm import (
+    CharmBase,
+    ConfigChangedEvent,
+    RelationChangedEvent,
+    RelationDepartedEvent,
+    RelationEvent,
+)
 from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
+from ops.model import (
+    ActiveStatus,
+    BlockedStatus,
+    MaintenanceStatus,
+    Relation,
+    RelationDataContent,
+    WaitingStatus,
+)
 
 from constants.errors import SCHEMA_VERSION_CHECK_ERROR
 from constants.snap import SERVER_SNAP_NAME, SERVER_SNAP_REVISION
@@ -40,6 +54,7 @@ REQUIRED_SETTINGS = {
 DATABASE_NAME = "livepatch"
 DATABASE_RELATION = "database"
 DATABASE_RELATION_LEGACY = "database-legacy"
+PRO_AIRGAPPED_SERVER_RELATION = "pro-airgapped-server"
 TRUSTED_CA_FILENAME = "/usr/local/share/ca-certificates/trusted-contracts.ca.crt"
 
 
@@ -65,6 +80,7 @@ class OperatorMachineCharm(CharmBase):
         """Init function."""
         super().__init__(*args)
         self._state = State(self.app, lambda: self.model.get_relation("livepatch"))
+        self.framework.observe(self.on.livepatch_relation_changed, self._on_livepatch_relation_changed)
 
         # Setup snapcache
         self.snap_cache = SnapCache()
@@ -98,6 +114,14 @@ class OperatorMachineCharm(CharmBase):
             self._on_database_event,
         )
 
+        # Air-gapped pro/contracts
+        self.framework.observe(
+            self.on.pro_airgapped_server_relation_changed, self._on_pro_airgapped_server_relation_changed
+        )
+        self.framework.observe(
+            self.on.pro_airgapped_server_relation_departed, self._on_pro_airgapped_server_relation_departed
+        )
+
         # Actions
         self.framework.observe(self.on.enable_action, self.on_enable_action)
         self.framework.observe(self.on.schema_upgrade_action, self.on_schema_upgrade_action)
@@ -126,6 +150,11 @@ class OperatorMachineCharm(CharmBase):
     ###################
     # LIFECYCLE HOOKS #
     ###################
+
+    def _on_livepatch_relation_changed(self, event) -> None:
+        """Handle peer `relation-changed` event."""
+        self._config_changed(event)
+
     def _install(self, _):
         """Install livepatch snap."""
         self.set_status_and_log(INSTALLING, WaitingStatus)
@@ -157,11 +186,10 @@ class OperatorMachineCharm(CharmBase):
 
     def _config_changed(self, event: Union[ConfigChangedEvent, None]):
         """Update snap internal configuration, additionally validating the DB is ready each time."""
-        if not self._check_required_config_assigned():
-            return
-        if not self._check_install_and_relations():
-            return
-        if not self._database_migrated():
+        can_continue = (
+            self._check_required_config_assigned() and self._check_install_and_relations() and self._database_migrated()
+        )
+        if not can_continue:
             return
 
         self._update_trusted_ca_certs()
@@ -177,9 +205,19 @@ class OperatorMachineCharm(CharmBase):
         if len(self.config.get(pg_conn_str_conf)) == 0:
             configuration["patch-storage.postgres-connection-string"] = self._state.db_uri
 
-        if self.config.get("patch-sync.enabled") == "True":
+        if self.config.get("patch-sync.enabled") is True:
             # TODO: Test this alex
             configuration["patch-sync.id"] = self.model.uuid
+
+        # Getting the pro-airgapped-server relation data.
+        pro_relations = self.model.relations.get(PRO_AIRGAPPED_SERVER_RELATION, None)
+        if pro_relations and len(pro_relations):
+            address = self._get_available_pro_airgapped_server_address(pro_relations[0])
+            if address:
+                configuration["contracts.enabled"] = True
+                configuration["contracts.url"] = address
+                configuration.pop("contracts.user", None)
+                configuration.pop("contracts.password", None)
 
         try:
             prefixed_configuration = {f"lp.{key}": val for key, val in configuration.items()}
@@ -378,6 +416,47 @@ class OperatorMachineCharm(CharmBase):
         server_address: str = self.config.get("server.server-address")
         port = server_address.split(":")[1]
         event.relation.data[self.unit]["port"] = port
+
+    def _on_pro_airgapped_server_relation_changed(self, event: RelationChangedEvent):
+        """Handle pro-airgapped-server relation-changed event."""
+        self._config_changed(event)
+
+    def _on_pro_airgapped_server_relation_departed(self, event: RelationDepartedEvent):
+        """Handle pro-airgapped-server relation-departed event."""
+        self._config_changed(event)
+
+    def _get_available_pro_airgapped_server_address(self, relation: Relation) -> Union[str, None]:
+        """
+        Return the pro-airgapped-server address, if any, taken from related unit databags.
+
+        The returned value will be the same for all units. This is achieved by iterating over
+        a sorted list of available units.
+        """
+        sorted_units = sorted(relation.units, key=lambda unit: unit.name)
+        for unit in sorted_units:
+            data = relation.data.get(unit, None)
+            if not data:
+                continue
+            address = self._extract_pro_airgapped_server_address(data)
+            if address:
+                return address
+        return None
+
+    def _extract_pro_airgapped_server_address(self, data: RelationDataContent) -> Union[str, None]:
+        """
+        Extract pro-airgapped-server address from given unit databag.
+
+        The method returns None, if data structure is not valid.
+        """
+        hostname = data.get("hostname")
+        if not hostname:
+            logger.error("empty 'hostname' value in pro-airgapped relation data")
+            return None
+
+        scheme = data.get("scheme") or "http"
+        port = data.get("port")
+        netloc = hostname + (f":{port}" if port else "")
+        return urlunparse(ParseResult(scheme, netloc, "", "", "", ""))
 
     ###########
     # ACTIONS #

@@ -17,6 +17,7 @@ APP_NAME = METADATA["name"]
 POSTGRES_NAME = "postgresql"
 HAPROXY_NAME = "haproxy"
 NGINX_NAME = "nginx-ingress-integrator"
+PRO_AIRGAPPED_SERVER_NAME = "pro-airgapped-server"
 
 
 async def scale(ops_test: OpsTest, application_name: str, count: int) -> None:

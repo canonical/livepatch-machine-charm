@@ -90,6 +90,7 @@ options:
       A comma separated list of "user:password" pairs used for authentication.
     type: string
   contracts.enabled:
+    default: false
     description: Whether use of the contracts service is enabled.
     type: boolean
   contracts.url:
