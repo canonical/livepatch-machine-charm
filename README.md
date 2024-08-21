@@ -42,6 +42,14 @@ juju deploy haproxy
 juju integrate canonical-livepatch-server:website haproxy:website
 ```
 
+### Air-gapped Contracts
+
+Livepatch can be optionally integrated with [`pro-airgapped-server`](https://charmhub.io/pro-airgapped-server) via the `pro-airgapped-server` endpoint:
+
+```sh
+juju integrate canonical-livepatch-server:pro-airgapped-server pro-airgapped-server
+```
+
 ## Documentation
 
 For more detailed instructions on deploying Livepatch server, please see the documentation for this service, available on the [Livepatch website](https://ubuntu.com/security/livepatch/docs).
