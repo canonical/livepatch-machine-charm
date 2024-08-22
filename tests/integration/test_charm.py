@@ -116,9 +116,8 @@ class TestDeployment:
                 num_units=1,
                 config={
                     # Since we don't have a fake yet valid Pro token, we use the following
-                    # override mechanism to bypass the validation step. The token and the
-                    # override are taken from happy-path tests of the underlying project.
-                    "pro-tokens": "C14LZCAxz36w6Nh5EQDuD6cmNKtwWn",
+                    # override mechanism to bypass the validation step. The config below is
+                    # taken from happy-path tests of the underlying project.
                     "manual-server-config": "QzE0TFpDQXh6MzZ3Nk5oNUVRRHVENmNtTkt0d1duOgogIGFjY291bnRJbmZvOgogICAgY3JlYXRlZEF0OiAiMjAyMi0wNS0xMlQwNjoyNzowM1oiCiAgICBpZDogYUFQWXc3M3hHCiAgICBuYW1lOiBhLmJAZXhhbXBsZS5jb20KICAgIHR5cGU6IHBlcnNvbmFsCiAgY29udHJhY3RJbmZvOgogICAgYWxsb3dhbmNlczoKICAgIC0gbWV0cmljOiB1bml0cwogICAgICB2YWx1ZTogMwogICAgY3JlYXRlZEF0OiAiMjAyMi0wNS0xMlQwNjoyNzowNFoiCiAgICBjcmVhdGVkQnk6ICIiCiAgICBlZmZlY3RpdmVGcm9tOiAiMjAyMi0wNS0xMlQwNjoyNzowNFoiCiAgICBlZmZlY3RpdmVUbzogIjk5OTktMTItMzFUMDA6MDA6MDBaIgogICAgaWQ6IGNBWC0tb05kCiAgICBpdGVtczoKICAgIC0gY29udHJhY3RJRDogY0FYLS1vTmQKICAgICAgY3JlYXRlZDogIjIwMjItMDUtMTJUMDY6Mjc6MDRaIgogICAgICBlZmZlY3RpdmVGcm9tOiAiMjAyMi0wNS0xMlQwNjoyNzowNFoiCiAgICAgIGVmZmVjdGl2ZVRvOiAiOTk5OS0xMi0zMVQwMDowMDowMFoiCiAgICAgIGV4dGVybmFsSURzOiBudWxsCiAgICAgIGlkOiAzOTYyOTAKICAgICAgbGFzdE1vZGlmaWVkOiAiMjAyMi0wNS0xMlQwNjoyNzowNFoiCiAgICAgIG1ldHJpYzogdW5pdHMKICAgICAgcmVhc29uOiBjb250cmFjdF9jcmVhdGVkCiAgICAgIHZhbHVlOiAzCiAgICBuYW1lOiBhLmJAZXhhbXBsZS5jb20KICAgIG9yaWdpbjogZnJlZQogICAgcHJvZHVjdHM6CiAgICAtIGZyZWUKICAgIHJlc291cmNlRW50aXRsZW1lbnRzOgogICAgLSBhZmZvcmRhbmNlczoKICAgICAgICBhcmNoaXRlY3R1cmVzOgogICAgICAgIC0gYW1kNjQKICAgICAgICAtIHg4Nl82NAogICAgICAgIHNlcmllczoKICAgICAgICAtIHhlbmlhbAogICAgICAgIC0gYmlvbmljCiAgICAgIGRpcmVjdGl2ZXM6CiAgICAgICAgYWRkaXRpb25hbFBhY2thZ2VzOgogICAgICAgIC0gdWJ1bnR1LWNvbW1vbmNyaXRlcmlhCiAgICAgICAgYXB0S2V5OiA5RjkxMkRBREQ5OUVFMUNDNkJGRkZGMjQzQTE4NkU3MzNGNDkxQzQ2CiAgICAgICAgYXB0VVJMOiBodHRwczovL2VzbS51YnVudHUuY29tL2NjCiAgICAgICAgc3VpdGVzOgogICAgICAgIC0geGVuaWFsCiAgICAgICAgLSBiaW9uaWMKICAgICAgZW50aXRsZWQ6IHRydWUKICAgICAgb2JsaWdhdGlvbnM6CiAgICAgICAgZW5hYmxlQnlEZWZhdWx0OiBmYWxzZQogICAgICB0eXBlOiBjYy1lYWw=",  # noqa: E501
                 },
             )
