@@ -31,7 +31,7 @@ juju integrate canonical-livepatch-server:database postgresql:database
 
 There is also an endpoint, named `database-legacy`, which can be used with PostgreSQL charm's legacy endpoint, `db` . But it is strongly recommended that users integrate with the `database` endpoint mentioned earlier. 
 
-## Reverse-proxy
+### Reverse-proxy
 
 Livepatch provides an endpoint, named `website`, which can integrated with reverse-proxy/load-balancer services that are meant to gate external access, like [HAProxy](https://charmhub.io/haproxy).
 
@@ -40,6 +40,14 @@ As an example, users can integrate this endpoint by using Juju as follows:
 ```sh
 juju deploy haproxy
 juju integrate canonical-livepatch-server:website haproxy:website
+```
+
+### Air-gapped Contracts
+
+Livepatch can be optionally integrated with [`pro-airgapped-server`](https://charmhub.io/pro-airgapped-server) via the `pro-airgapped-server` endpoint:
+
+```sh
+juju integrate canonical-livepatch-server:pro-airgapped-server pro-airgapped-server
 ```
 
 ## Documentation
