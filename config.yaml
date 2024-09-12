@@ -260,6 +260,14 @@ options:
     default: https://livepatch.canonical.com
     description: Livepatch server to download patch snapshots from.
     type: string
+  patch-sync.sync-tiers:
+    description: >-
+      Mirror patch tier information from the upstream server.
+      WARNING: Enabling this feature will modify existing
+      tier information in order to match the upstream server's
+      tier structure. Avoid this if you already have tiers setup.
+    type: boolean
+    default: false
   patch-sync.proxy.enabled:
     default: false
     description: Whether or not to proxy patch syncs.
