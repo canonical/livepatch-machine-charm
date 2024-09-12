@@ -39,6 +39,21 @@ class TestCharm(unittest.TestCase):
         snap_cache = {"canonical-livepatch-server": mock}
         return mock, patch("src.charm.SnapCache", return_value=snap_cache)
 
+    def test_snap_config(self):
+        """Test snap config is set as expected."""
+        self.start_leader_unit()
+
+        expected_config = {
+            "lp.patch-sync.sync-tiers": True,
+        }
+
+        def snap_set_mock(prefixed_configuration: Dict[str, Any]):
+            self.assertEqual(prefixed_configuration, prefixed_configuration | expected_config)
+
+        self.snap_mock.set = Mock(side_effect=snap_set_mock)
+        self.harness.update_config({"patch-sync.sync-tiers": True})
+        self.assertTrue(self.snap_mock.set.called)
+
     # wokeignore:rule=master
     def test_legacy_db_master_changed(self):
         """test `_legacy_db_master_changed event` handler."""
@@ -321,14 +336,13 @@ class TestCharm(unittest.TestCase):
         """Test pro-airgapped-server relation."""
         self.start_leader_unit()
 
+        expected_config = {
+            "lp.contracts.enabled": True,
+            "lp.contracts.url": "scheme://some.host.name:9999",
+        }
+
         def snap_set_mock(prefixed_configuration: Dict[str, Any]):
-            self.assertDictContainsSubset(
-                {
-                    "lp.contracts.enabled": True,
-                    "lp.contracts.url": "scheme://some.host.name:9999",
-                },
-                prefixed_configuration,
-            )
+            self.assertEqual(prefixed_configuration, prefixed_configuration | expected_config)
             self.assertNotIn("lp.contracts.user", prefixed_configuration)
             self.assertNotIn("lp.contracts.password", prefixed_configuration)
 
@@ -351,14 +365,13 @@ class TestCharm(unittest.TestCase):
         self.start_leader_unit()
 
         def update_snap_set_mock(expected_enabled: bool, expected_url: str):
+            expected_config = {
+                "lp.contracts.enabled": expected_enabled,
+                "lp.contracts.url": expected_url,
+            }
+
             def snap_set_mock(prefixed_configuration: Dict[str, Any]):
-                self.assertDictContainsSubset(
-                    {
-                        "lp.contracts.enabled": expected_enabled,
-                        "lp.contracts.url": expected_url,
-                    },
-                    prefixed_configuration,
-                )
+                self.assertEqual(prefixed_configuration, prefixed_configuration | expected_config)
                 self.assertNotIn("lp.contracts.user", prefixed_configuration)
                 self.assertNotIn("lp.contracts.password", prefixed_configuration)
 
@@ -398,14 +411,13 @@ class TestCharm(unittest.TestCase):
         self.start_leader_unit()
 
         def update_snap_set_mock(expected_enabled: bool, expected_url: str):
+            expected_config = {
+                "lp.contracts.enabled": expected_enabled,
+                "lp.contracts.url": expected_url,
+            }
+
             def snap_set_mock(prefixed_configuration: Dict[str, Any]):
-                self.assertDictContainsSubset(
-                    {
-                        "lp.contracts.enabled": expected_enabled,
-                        "lp.contracts.url": expected_url,
-                    },
-                    prefixed_configuration,
-                )
+                self.assertEqual(prefixed_configuration, prefixed_configuration | expected_config)
                 self.assertNotIn("lp.contracts.user", prefixed_configuration)
                 self.assertNotIn("lp.contracts.password", prefixed_configuration)
 
@@ -461,14 +473,13 @@ class TestCharm(unittest.TestCase):
             },
         )
 
+        expected_config = {
+            "lp.contracts.enabled": False,
+        }
+
         # Now we remove the relation. The charm should disable use of contracts.
         def snap_set_mock(prefixed_configuration: Dict[str, Any]):
-            self.assertDictContainsSubset(
-                {
-                    "lp.contracts.enabled": False,
-                },
-                prefixed_configuration,
-            )
+            self.assertEqual(prefixed_configuration, prefixed_configuration | expected_config)
 
         self.snap_mock.set = Mock(side_effect=snap_set_mock)
         self.harness.remove_relation(pro_rel_id)
