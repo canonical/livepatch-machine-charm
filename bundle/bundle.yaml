@@ -16,12 +16,12 @@ applications:
     charm: ch:postgresql
     channel: 14/stable
     num_units: 1
-    constraints: cpu-cores=1 mem=4G root-disk=50G
+    constraints: cpu-cores=2 mem=4G root-disk=50G
   livepatch:
     charm: ch:canonical-livepatch-server
-    channel: ops1.x/edge
+    channel: ops1.x/stable
     num_units: 1
-    constraints: cpu-cores=1 mem=2G root-disk=50G
+    constraints: cpu-cores=2 mem=4G root-disk=50G
     options:
       patch-storage.type: postgres
   haproxy:

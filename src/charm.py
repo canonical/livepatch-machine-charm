@@ -23,7 +23,7 @@ from ops.charm import (
     RelationDepartedEvent,
     RelationEvent,
 )
-from ops.main import main
+from ops import main
 from ops.model import (
     ActiveStatus,
     BlockedStatus,
