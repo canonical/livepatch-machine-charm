@@ -621,7 +621,9 @@ class TestCharm(unittest.TestCase):
         class MockStatus(StatusBase):
             """Mock status class to make sure this type of status is unknown to the code."""
 
-        self.harness.model.unit.status = MockStatus("some fake status")
+            name = "some fake status"
+
+        self.harness.model.unit.status = MockStatus("some fake message")
 
         # We should verify that the state is not changed in this case.
         last_status_message = self.harness.model.unit.status.message

@@ -23,7 +23,37 @@ bases:
           - amd64
 parts:
   charm:
+    charm-strict-dependencies: true
     charm-binary-python-packages:
+      - anyio
       - bcrypt
-    charm-python-packages: [setuptools, pip]
-    build-packages: [git]
+      - certifi
+      - cffi
+      - charset-normalizer
+      - cosl
+      - exceptiongroup
+      - h11
+      - httpcore
+      - httpx
+      - idna
+      - lightkube
+      - lightkube-models
+      - macaroonbakery
+      - ops
+      - ops-lib-pgsql
+      - pgconnstr
+      - protobuf
+      - pycparser
+      - pydantic
+      - pymacaroons
+      - PyNaCl
+      - pyRFC3339
+      - pytz
+      - PyYAML
+      - requests
+      - six
+      - sniffio
+      - tenacity
+      - typing_extensions
+      - urllib3
+      - websocket-client

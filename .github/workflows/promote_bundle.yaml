@@ -3,34 +3,27 @@ name: Promote Bundle
 on:
   workflow_dispatch:
     inputs:
-        origin-channel:
-            type: choice
-            description: 'Origin Channel'
-            options:
-            - machine/edge
-            - machine/beta
-            - machine/candidate
-        destination-channel:
-            type: choice
-            description: 'Destination Channel'
-            options:
-            - machine/beta
-            - machine/candidate
-            - machine/stable
+      destination-channel:
+        type: choice
+        description: 'Destination Channel'
+        options:
+        - machine/beta
+        - machine/candidate
+        - machine/stable
 
 jobs:
   promote:
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v4
-    # Note the use of the release-charm action. Bundles can be treated as charms.
-    - name: Promote Bundle
-      uses: canonical/charming-actions/release-charm@main
-      with:
-        origin-channel: ${{ github.event.inputs.origin-channel }}
-        destination-channel: ${{ github.event.inputs.destination-channel }}
-        tag-prefix: "bundle"
-        charm-path: "./bundle"
-        credentials: ${{ secrets.CHARMCRAFT_CREDENTIALS }}
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout code
+        uses: actions/checkout@v4
+      # There is no action to promote a bundle so we use the upload action
+      - name: Upload Bundle
+        uses: canonical/charming-actions/upload-bundle@main
+        with:
+            credentials: "${{ secrets.CHARMCRAFT_AUTH }}"
+            tag-prefix: "bundle"
+            bundle-path: ./bundle
+            github-token: "${{ secrets.GITHUB_TOKEN }}"
+            channel: ${{ github.event.inputs.destination-channel }}
 
