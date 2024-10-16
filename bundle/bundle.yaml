@@ -11,6 +11,7 @@ website: https://ubuntu.com/security/livepatch
 issues: https://bugs.launchpad.net/livepatch-onprem
 docs: https://discourse.ubuntu.com/t/ubuntu-livepatch-service/22723
 tags: [security]
+series: jammy
 applications:
   postgresql:
     charm: ch:postgresql
