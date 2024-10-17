@@ -29,7 +29,8 @@ logger = logging.getLogger(__name__)
 class TestDeployment:
     """Integration tests for charm."""
 
-    async def assert_http(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    async def assert_http(
         self, ops_test: OpsTest, protocol: str, application: str, unit: int, port: int, path: str = ""
     ) -> str:
         """
