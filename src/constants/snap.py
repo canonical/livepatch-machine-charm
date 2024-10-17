@@ -4,6 +4,6 @@
 """Snap names and commands constants."""
 
 SERVER_SNAP_NAME = "canonical-livepatch-server"
-SERVER_SNAP_REVISION = 42
+SERVER_SNAP_REVISION = 44
 SCHEMA_UPGRADE_COMMAND = "schema-tool"
 SCHEMA_VERSION_CHECK = "check-schema-version"
