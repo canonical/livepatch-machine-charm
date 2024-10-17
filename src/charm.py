@@ -299,22 +299,27 @@ class OperatorMachineCharm(CharmBase):
                 )
 
     def _update_trusted_ca_certs(self):
-        """Update trusted CA certificates with the cert from configuration."""
+        """Update trusted CA certificates with the cert from configuration.
+
+        Livepatch needs to restart to use newly received certificates.
+
+        Args:
+            container (Container): The workload container, the caller must ensure that we can connect.
+        """
         if not self.config.get("contracts.ca"):
             logging.debug("ca config not set")
             return
 
-        cert = b64decode(self.config.get("contracts.ca")).decode("utf8")
-        cert_hash = hash(cert)
-        if self._state.contract_cert_hash and cert_hash == self._state.contract_cert_hash:
+        try:
+            cert = b64decode(self.config.get("contracts.ca")).decode("utf8")
+        except Exception:
+            logging.error("failed to parse base64 value of `contracts.ca` config option")
             return
 
         with open(TRUSTED_CA_FILENAME, "wt") as f:
             f.write(cert)
-        self._state.contract_cert_hash = cert_hash
         result = subprocess.check_output(["update-ca-certificates", "--fresh"], stderr=subprocess.STDOUT)  # nosec
         logger.info("output update-ca-certificates: %s", result)
-        return
 
     # Legacy database
 
