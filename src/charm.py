@@ -9,21 +9,22 @@
 import logging
 import subprocess  # nosec
 from base64 import b64decode
-from typing import Any, Tuple, Union
+from typing import Optional, Tuple
 from urllib.parse import ParseResult, urlunparse
 
 import pgsql
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.operator_libs_linux.v2.snap import Snap, SnapCache, SnapError, SnapState
+from ops import main
 from ops.charm import (
     CharmBase,
     ConfigChangedEvent,
+    HookEvent,
     RelationChangedEvent,
     RelationDepartedEvent,
     RelationEvent,
 )
-from ops import main
 from ops.model import (
     ActiveStatus,
     BlockedStatus,
@@ -152,11 +153,33 @@ class OperatorMachineCharm(CharmBase):
     ###################
 
     def _on_livepatch_relation_changed(self, event) -> None:
-        """Handle peer `relation-changed` event."""
-        self._config_changed(event)
+        """
+        On peer relation changed hook.
 
-    def _install(self, _):
-        """Install livepatch snap."""
+        This hook is for the non-leader units to get notified when the state
+        changes. On the leader unit this hook should be ignored to avoid
+        repetitive workload restarts while handling relations. This also means,
+        on the leader unit, whenever the state changes, the update workload
+        method should be called manually.
+        """
+        if self.unit.is_leader():
+            return
+        if not self._state.is_ready():
+            logging.warning("State is not ready")
+            return
+        self._update_workload_configuration(event)
+
+
+    def _config_changed(self, event: ConfigChangedEvent):
+        """Handle the config-changed hook."""
+        self._update_workload_configuration(event)
+
+    def _update_status(self, event):
+        """Handle the update-status hook."""
+        self._update_unit_status()
+
+    def _install(self, event):
+        """Handle the install hook."""
         self.set_status_and_log(INSTALLING, WaitingStatus)
         # Make sure it installed
         logger.info("Current install state: %s", self.livepatch_installed)
@@ -184,8 +207,15 @@ class OperatorMachineCharm(CharmBase):
                 return False
         return True
 
-    def _config_changed(self, event: Union[ConfigChangedEvent, None]):
-        """Update snap internal configuration, additionally validating the DB is ready each time."""
+    def _update_workload_configuration(self, event: Optional[HookEvent]):
+        """
+        Update snap internal configuration, additionally validating the DB is ready each time.
+
+        Note that given event should be deferrable. For example, action events
+        (of type ActionEvent), will raise exception if their `defer` method is
+        invoked. So, the caller of this method should pass event as None if it's
+        not a deferrable event.
+        """
         can_continue = (
             self._check_required_config_assigned() and self._check_install_and_relations() and self._database_migrated()
         )
@@ -251,9 +281,9 @@ class OperatorMachineCharm(CharmBase):
                 event.defer()
             return
 
-        self._update_status(event)
+        self._update_unit_status()
 
-    def _update_status(self, _: Any) -> None:
+    def _update_unit_status(self):
         """Perform a simple service health check."""
         logging.info("Updating application status...")
         current_status = self.unit.status
@@ -345,9 +375,7 @@ class OperatorMachineCharm(CharmBase):
         else:
             self._state.db_uri = None
 
-        # if self._check_install_and_relations():
-        #     self._check_schema_upgrade_required(event)
-        self._config_changed(event)
+        self._update_workload_configuration(event)
 
     def _on_legacy_db_standby_changed(self, event: pgsql.StandbyChangedEvent):
         logging.info("(postgresql, legacy database relation) STANDBY_CHANGED event fired.")
@@ -367,6 +395,8 @@ class OperatorMachineCharm(CharmBase):
         # which causes the schema upgrade command to return `unrecognized configuration parameter
         # "fallback_application_name" (SQLSTATE 42704)`.
         self._state.db_ro_uris = [c.uri.split("?", 1)[0] for c in event.standbys]
+
+        self._update_workload_configuration(event)
 
     # Database
 
@@ -410,7 +440,7 @@ class OperatorMachineCharm(CharmBase):
 
         # if self._check_install_and_relations():
         #     self._check_schema_upgrade_required(event)
-        self._config_changed(event)
+        self._update_workload_configuration(event)
 
     def _on_website_relation_joined(self, event: RelationEvent) -> None:
         server_address: str = self.config.get("server.server-address")
@@ -419,13 +449,13 @@ class OperatorMachineCharm(CharmBase):
 
     def _on_pro_airgapped_server_relation_changed(self, event: RelationChangedEvent):
         """Handle pro-airgapped-server relation-changed event."""
-        self._config_changed(event)
+        self._update_workload_configuration(event)
 
     def _on_pro_airgapped_server_relation_departed(self, event: RelationDepartedEvent):
         """Handle pro-airgapped-server relation-departed event."""
-        self._config_changed(event)
+        self._update_workload_configuration(event)
 
-    def _get_available_pro_airgapped_server_address(self, relation: Relation) -> Union[str, None]:
+    def _get_available_pro_airgapped_server_address(self, relation: Relation) -> Optional[str]:
         """
         Return the pro-airgapped-server address, if any, taken from related unit databags.
 
@@ -442,7 +472,7 @@ class OperatorMachineCharm(CharmBase):
                 return address
         return None
 
-    def _extract_pro_airgapped_server_address(self, data: RelationDataContent) -> Union[str, None]:
+    def _extract_pro_airgapped_server_address(self, data: RelationDataContent) -> Optional[str]:
         """
         Extract pro-airgapped-server address from given unit databag.
 
