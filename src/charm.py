@@ -266,19 +266,16 @@ class OperatorMachineCharm(CharmBase):
         except SnapError as e:
             logging.error("error occurred when attempting to restart snap: %s", e)
             self.set_status_and_log("Livepatch failed to restart.", MaintenanceStatus)
-            if event is not None:
-                event.defer()
+            self._defer(event)
             return
 
         if self.unit.status.message == AWAIT_POSTGRES_RELATION:
-            if event is not None:
-                event.defer()
+            self._defer(event)
             return
 
         if self.livepatch_running is not True:
             self.set_status_and_log("Livepatch failed to restart.", MaintenanceStatus)
-            if event is not None:
-                event.defer()
+            self._defer(event)
             return
 
         self._update_unit_status()
@@ -554,6 +551,17 @@ class OperatorMachineCharm(CharmBase):
         """Log and set unit status simultaneously."""
         logging.info(msg)
         self.unit.status = status(msg)
+
+    def _defer(self, event: Optional[HookEvent]):
+        """
+        Defer given event object if it's not None.
+
+        This is a helper method to avoid repeating none checks. It should only
+        be used when the event object can be None.
+        """
+        if not event:
+            return
+        event.defer()
 
 
 if __name__ == "__main__":
