@@ -253,7 +253,7 @@ class OperatorMachineCharm(CharmBase):
             prefixed_configuration = {f"lp.{key}": val for key, val in configuration.items()}
             self.get_livepatch_snap.set(prefixed_configuration)
         except SnapError as e:
-            # This *shouldn"t* fire, but would rather be safe!
+            # This *shouldn't* fire, but would rather be safe!
             logging.error(
                 "error occurred when attempting to set snap configuration value %s",
                 e,
