@@ -169,6 +169,32 @@ class OperatorMachineCharm(CharmBase):
             return
         self._update_workload_configuration(event)
 
+    def _restart_non_leader_units(self):
+        """
+        Cue non-leader units to update their workload configuration.
+
+        This method is meant to be used by action hooks that *do not* update the
+        state. It's because upon updating the state, the non-leader units will
+        get receive the cue via the peer-relation-changed event.
+        """
+        if not self.unit.is_leader() or not self._state.is_ready():
+            return
+        # By incrementing a value in the state, an peer-relation-changed event
+        # will be fired and the non-leader units will respond to it.
+        self._state.restart_cue = 1 + (self._state.restart_cue or 0)
+
+    def _restart_all_units(self):
+        """
+        Restart the leader along with non-leader units.
+
+        This method is meant to be used by action hooks that *do not* update the
+        state. It's because upon updating the state, the non-leader units will
+        get receive the cue via the peer-relation-changed event.
+        """
+        if not self.unit.is_leader() or not self._state.is_ready():
+            return
+        self._restart_non_leader_units()
+        self._update_workload_configuration(None)
 
     def _config_changed(self, event: ConfigChangedEvent):
         """Handle the config-changed hook."""
