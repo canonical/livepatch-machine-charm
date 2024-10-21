@@ -183,7 +183,9 @@ class OperatorMachineCharm(CharmBase):
         if not self.unit.is_leader() or not self._state.is_ready():
             return
         # By incrementing a value in the state, an peer-relation-changed event
-        # will be fired and the non-leader units will respond to it.
+        # will be fired and the non-leader units will respond to it. Note that
+        # Python int type is unbounded, so no overflow exception will occur
+        # (e.g., when there is a crash loop happening).
         self._state.restart_cue = 1 + (self._state.restart_cue or 0)
 
     def _restart_all_units(self):
