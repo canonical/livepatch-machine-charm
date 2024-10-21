@@ -175,7 +175,10 @@ class OperatorMachineCharm(CharmBase):
 
         This method is meant to be used by action hooks that *do not* update the
         state. It's because upon updating the state, the non-leader units will
-        get receive the cue via the peer-relation-changed event.
+        receive the cue via the peer-relation-changed event.
+
+        This method is meant to be called by the leader unit, otherwise, it does
+        nothing.
         """
         if not self.unit.is_leader() or not self._state.is_ready():
             return
@@ -189,11 +192,16 @@ class OperatorMachineCharm(CharmBase):
 
         This method is meant to be used by action hooks that *do not* update the
         state. It's because upon updating the state, the non-leader units will
-        get receive the cue via the peer-relation-changed event.
+        receive the cue via the peer-relation-changed event.
+
+        This method is meant to be called by the leader unit, otherwise, it does
+        nothing.
         """
         if not self.unit.is_leader() or not self._state.is_ready():
             return
         self._restart_non_leader_units()
+
+        # Restart the leader unit (current unit).
         self._update_workload_configuration(None)
 
     def _config_changed(self, event: ConfigChangedEvent):
@@ -237,10 +245,10 @@ class OperatorMachineCharm(CharmBase):
         """
         Update snap internal configuration, additionally validating the DB is ready each time.
 
-        Note that given event should be deferrable. For example, action events
-        (of type ActionEvent), will raise exception if their `defer` method is
-        invoked. So, the caller of this method should pass event as None if it's
-        not a deferrable event.
+        Note that the given event should be deferrable. For example, action
+        events (of type ActionEvent), will raise exception if their `defer`
+        method is invoked. So, the caller of this method should pass event as
+        None if it's not a deferrable event.
         """
         can_continue = (
             self._check_required_config_assigned() and self._check_install_and_relations() and self._database_migrated()
