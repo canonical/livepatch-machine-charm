@@ -1,4 +1,4 @@
-anyio==4.6.2
+anyio==4.6.2.post1
 bcrypt==4.2.0
 certifi==2024.8.30
 cffi==1.17.1
