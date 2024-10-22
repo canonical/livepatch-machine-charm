@@ -11,7 +11,7 @@ httpx==0.27.2
 idna==3.10
 lightkube==0.15.4
 lightkube-models==1.31.1.8
-macaroonbakery==1.3.2
+macaroonbakery==1.3.4
 ops==2.17.0
 ops-lib-pgsql==1.4
 pgconnstr==1.0.1
