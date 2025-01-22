@@ -292,6 +292,48 @@ options:
     default: 5m
     description: How often to check for new blocklist entries.
     type: string
+
+  cve-lookup.enabled:
+    default: false
+    description: |
+      Whether or not if this instance of Livepatch Server should lookup fixed CVEs in response to client requests.
+    type: boolean
+  cve-lookup.auth-required:
+    default: false
+    description: |
+      Whether or not requests to retrieve fixed CVEs should be authenticated.
+    type: boolean
+  cve-sync.enabled:
+    default: false
+    description: |
+      Whether or not if this instance of Livepatch Server should sync fixed CVEs data.
+    type: boolean
+  cve-sync.source-url:
+    default: ""
+    description: |
+      Address of Livepatch CVE service to sync fixed CVEs data from.
+    type: string
+  cve-sync.interval:
+    default: "1h"
+    description: Period between automatic refreshing of fixed CVE data.
+    type: string
+  cve-sync.proxy.enabled:
+    default: false
+    description: Whether or not to proxy fixed CVE data syncs.
+    type: boolean
+  cve-sync.proxy.http:
+    default: ""
+    description: A comma separated list HTTP proxies to query fixed CVE data.
+    type: string
+  cve-sync.proxy.https:
+    default: ""
+    description: A comma separated list HTTPS proxies to query fixed CVE data.
+    type: string
+  cve-sync.proxy.no-proxy:
+    default: ""
+    description: A comma separated list of domains, IP CIDRs and/or ports to block when querying fixed CVE data.
+    type: string
+
   machine-reports.database.enabled:
     default: false
     description: Whether or not to enabled machine reports writes to PostgreSQL.
