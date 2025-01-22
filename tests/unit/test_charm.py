@@ -485,6 +485,60 @@ class TestCharm(unittest.TestCase):
         self.harness.remove_relation(pro_rel_id)
         self.assertTrue(self.snap_mock.set.called)
 
+    def test_cve_catalog_relation__success(self):
+        """Test cve-catalog relation."""
+        self.start_leader_unit()
+
+        expected_config = {
+            "lp.cve-lookup.enabled": False,  # Should not get enabled automatically.
+            "lp.cve-sync.enabled": True,
+            "lp.cve-sync.source-url": "scheme://some.host.name:9999",
+            "lp.cve-sync.interval": "1h",  # Default config value.
+        }
+
+        def snap_set_mock(prefixed_configuration: Dict[str, Any]):
+            self.assertEqual(prefixed_configuration, prefixed_configuration | expected_config)
+
+        self.snap_mock.set = Mock(side_effect=snap_set_mock)
+        cves_rel_id = self.harness.add_relation("cve-catalog", "livepatch-cve-service")
+        self.harness.add_relation_unit(cves_rel_id, "livepatch-cve-service/0")
+        self.harness.update_relation_data(
+            cves_rel_id,
+            "livepatch-cve-service",
+            {
+                "url": "scheme://some.host.name:9999",
+            },
+        )
+
+        self.assertTrue(self.snap_mock.set.called)
+
+    def test_cve_catalog_relation__relation_removed(self):
+        """Test when cve-catalog is removed."""
+        self.start_leader_unit()
+
+        cves_rel_id = self.harness.add_relation("cve-catalog", "livepatch-cve-service")
+        self.harness.add_relation_unit(cves_rel_id, "livepatch-cve-service/0")
+        self.harness.update_relation_data(
+            cves_rel_id,
+            "livepatch-cve-service",
+            {
+                "url": "scheme://some.host.name:9999",
+            },
+        )
+
+        expected_config = {
+            "lp.cve-lookup.enabled": False,
+            "lp.cve-sync.enabled": False,
+        }
+
+        def snap_set_mock(prefixed_configuration: Dict[str, Any]):
+            self.assertEqual(prefixed_configuration, prefixed_configuration | expected_config)
+
+        self.snap_mock.set = Mock(side_effect=snap_set_mock)
+        # Now we remove the relation.
+        self.harness.remove_relation(cves_rel_id)
+        self.assertTrue(self.snap_mock.set.called)
+
     def test_install(self):
         """test install event handler."""
         self.snap_mock.present = False
