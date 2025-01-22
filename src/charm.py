@@ -56,6 +56,7 @@ DATABASE_NAME = "livepatch"
 DATABASE_RELATION = "database"
 DATABASE_RELATION_LEGACY = "database-legacy"
 PRO_AIRGAPPED_SERVER_RELATION = "pro-airgapped-server"
+CVE_CATALOG_RELATION = "cve-catalog"
 TRUSTED_CA_FILENAME = "/usr/local/share/ca-certificates/trusted-contracts.ca.crt"
 
 
@@ -122,6 +123,10 @@ class OperatorMachineCharm(CharmBase):
         self.framework.observe(
             self.on.pro_airgapped_server_relation_departed, self._on_pro_airgapped_server_relation_departed
         )
+
+        # Livepatch CVE service
+        self.framework.observe(self.on.cve_catalog_relation_changed, self._on_cve_catalog_relation_changed)
+        self.framework.observe(self.on.cve_catalog_relation_broken, self._on_cve_catalog_relation_broken)
 
         # Actions
         self.framework.observe(self.on.enable_action, self.on_enable_action)
@@ -284,6 +289,12 @@ class OperatorMachineCharm(CharmBase):
                 configuration["contracts.url"] = address
                 configuration.pop("contracts.user", None)
                 configuration.pop("contracts.password", None)
+
+        cve_service_address = self._get_available_cve_service()
+        if cve_service_address and self.unit.is_leader():
+            # Note that other env vars are already set from the configuration.
+            configuration["cve-sync.enabled"] = True
+            configuration["cve-sync.source-url"] = cve_service_address
 
         try:
             prefixed_configuration = {f"lp.{key}": val for key, val in configuration.items()}
@@ -525,6 +536,23 @@ class OperatorMachineCharm(CharmBase):
         port = data.get("port")
         netloc = hostname + (f":{port}" if port else "")
         return urlunparse(ParseResult(scheme, netloc, "", "", "", ""))
+
+    def _on_cve_catalog_relation_changed(self, event: RelationChangedEvent):
+        """Handle cve-catalog relation-changed event."""
+        self._update_workload_configuration(event)
+
+    def _on_cve_catalog_relation_broken(self, event: RelationDepartedEvent):
+        """Handle cve-catalog relation-broken event."""
+        self._update_workload_configuration(event)
+
+    def _get_available_cve_service(self) -> Optional[str]:
+        """Return the Livepatch CVE service address, if any, taken from related app/unit."""
+        relation = self.model.get_relation(CVE_CATALOG_RELATION)
+        if not relation:
+            return None
+
+        address = relation.data.get(relation.app).get("url", "")
+        return address if address else None
 
     ###########
     # ACTIONS #
