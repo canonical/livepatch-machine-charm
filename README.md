@@ -50,6 +50,21 @@ Livepatch can be optionally integrated with [`pro-airgapped-server`](https://cha
 juju integrate canonical-livepatch-server:pro-airgapped-server pro-airgapped-server
 ```
 
+### Livepatch CVE service (optional, requires)
+
+Livepatch can be optionally integrated with [Livepatch CVE service](https://charmhub.io/canonical-livepatch-cve-k8s) via the `cve-catalog` endpoint. This integration provides the Livepatch server with the information about CVEs fixed in Ubuntu kernels.
+
+Since there is no machine charm for the Livepatch CVE service, to integrate with
+it, an cross-model/cross-controller relation has to be made:
+
+```sh
+# On the Livepatch CVE service model:
+juju offer canonical-livepatch-cve-k8s:cve-catlaog cve-catalog
+# On the Livepatch server model:
+juju consume <CONTROLLER>:<CVE SERVICE MODEL>.cve-catalog
+juju integrate canonical-livepatch-server cve-catalog
+```
+
 ## Documentation
 
 For more detailed instructions on deploying Livepatch server, please see the documentation for this service, available on the [Livepatch website](https://ubuntu.com/security/livepatch/docs).
