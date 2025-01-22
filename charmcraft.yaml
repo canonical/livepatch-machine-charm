@@ -5,22 +5,10 @@
 # https://juju.is/docs/sdk/charmcraft-config
 type: "charm"
 
-# Note that ops 2.0 requires Python 3.8+ which is only shipped on Ubuntu 20.04 and above.
-bases:
-  - build-on:
-      - name: "ubuntu"
-        channel: "20.04"
-        architectures:
-          - amd64
-    run-on:
-      - name: "ubuntu"
-        channel: "20.04"
-        architectures:
-          - amd64
-      - name: "ubuntu"
-        channel: "22.04"
-        architectures:
-          - amd64
+base: ubuntu@24.04
+platforms:
+  amd64:
+
 parts:
   charm:
     charm-strict-dependencies: true
