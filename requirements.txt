@@ -6,7 +6,7 @@ charset-normalizer==3.4.0
 cosl==0.0.41
 exceptiongroup==1.2.2
 h11==0.14.0
-httpcore==1.0.6
+httpcore==1.0.9
 httpx==0.27.2
 idna==3.10
 lightkube==0.15.4
