@@ -2,7 +2,7 @@ anyio==4.6.2
 bcrypt==4.2.0
 certifi==2024.8.30
 cffi==1.17.1
-charset-normalizer==3.4.0
+charset-normalizer==3.5.1
 cosl==0.0.41
 exceptiongroup==1.2.2
 h11==0.14.0
